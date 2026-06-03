@@ -26,6 +26,7 @@ BLUEPRINT_JSON = {
     "strategic_alignment": "Supports the Q2 goal of improving checkout funnel efficiency.",
     "whats_shipped": "A one-tap checkout button for returning users with a saved card, with a 5-second undo.",
     "scope_audience": "50/50 A/B on iOS and Android, returning US customers with a saved payment method.",
+    "approvers": {"product": "octocat", "engineering": "hubot", "data_science": "octocat"},
     "health_metrics": [
         {"name": "p95_checkout_latency_ms", "kind": "latency", "unit": "ms", "threshold": 250.0},
         {"name": "crash_rate", "kind": "crash_rate", "unit": "%", "threshold": 1.0},

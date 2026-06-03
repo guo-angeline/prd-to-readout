@@ -54,6 +54,9 @@ class StageState(BaseModel):
     updated_at: str | None = None
     artifacts: list[str] = Field(default_factory=list)
     history: list[dict] = Field(default_factory=list)
+    # GitHub-native gate: the issue tracking this stage's approval, if any.
+    issue_number: int | None = None
+    issue_url: str | None = None
 
     def record(self, action: str, *, by: str | None = None, note: str | None = None) -> None:
         self.updated_at = _now()
@@ -70,6 +73,8 @@ class WorkflowState(BaseModel):
     # Data source config, e.g. {"kind": "simulated", "seed": 42, "effect": 0.15}
     # or {"kind": "file", "path": "events.csv"}.
     source: dict = Field(default_factory=lambda: {"kind": "simulated"})
+    # GitHub-native gates: {"repo": "owner/name", "approvers": {role: handle}}.
+    github: dict | None = None
     created_at: str = Field(default_factory=_now)
     updated_at: str = Field(default_factory=_now)
     stages: dict[str, StageState] = Field(default_factory=dict)

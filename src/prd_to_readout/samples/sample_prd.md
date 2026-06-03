@@ -19,3 +19,8 @@ Returning customers with at least one saved payment method.
 ## Success looks like
 More carts turn into paid orders. We are willing to ship if conversion improves
 and cancellations do not get meaningfully worse.
+
+## Approvers
+- Product / metrics owner: @octocat
+- Engineering (instrumentation): @hubot
+- Data Science (QA + SQL): @octocat

@@ -36,6 +36,18 @@ class Hypotheses(BaseModel):
     because: str = Field("", description="the reasoning (user psychology, data insight)")
 
 
+class Approvers(BaseModel):
+    """GitHub handles of the humans who clear each gate (declared in the PRD).
+
+    Roles map to gates: product clears the hypothesis, engineering confirms the
+    instrumentation, data_science reviews QA and the SQL.
+    """
+
+    product: str = Field("", description="GitHub handle, e.g. octocat (no @)")
+    engineering: str = ""
+    data_science: str = ""
+
+
 class HealthMetric(BaseModel):
     """An operational/stability metric to monitor post-launch (not a success metric).
 
@@ -69,6 +81,7 @@ class AnalyticsBlueprint(BaseModel):
     primary_metric: Metric
     guardrail_metrics: list[Metric] = Field(default_factory=list)
     health_metrics: list[HealthMetric] = Field(default_factory=list)
+    approvers: Approvers = Field(default_factory=Approvers)
     hypotheses: Hypotheses
     experiment: ExperimentDesign = Field(default_factory=ExperimentDesign)
 

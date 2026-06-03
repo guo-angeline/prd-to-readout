@@ -31,6 +31,10 @@ health_metrics:
   kind: crash_rate
   unit: '%'
   threshold: 1.0
+approvers:
+  product: octocat
+  engineering: hubot
+  data_science: octocat
 hypotheses:
   'null': One-Tap Checkout has no effect on cart conversion rate.
   alternative: One-Tap Checkout increases cart conversion rate for returning customers.

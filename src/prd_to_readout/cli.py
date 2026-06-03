@@ -63,15 +63,90 @@ def _hint(state: WorkflowState) -> None:
 
 
 def _finish_stage(cfg: Config, state: WorkflowState, stage: str, artifacts, *, yes: bool = False) -> str:
-    """Complete a stage, persist state, and fire the handoff notification at the gate."""
+    """Complete a stage, fire the handoff notification, open a GitHub gate, persist."""
     from .adapters.notify import build_notifier, gate_notification
 
     arts = [str(a) for a in artifacts]
     status_now = workflow.complete_stage(state, stage, arts, auto_yes=yes)
-    _save(state, cfg)
     if status_now in ("awaiting_approval", "done"):
         build_notifier().send(gate_notification(stage, arts))
+    if status_now == "awaiting_approval":
+        _open_gate_issue(cfg, state, stage)
+    _save(state, cfg)
     return status_now
+
+
+def _github_client(state: WorkflowState):
+    """Return a GitHubClient if GitHub gates are configured, else None."""
+    from .adapters.github import GitHubClient
+
+    if not state.github or not state.github.get("repo"):
+        return None
+    return GitHubClient(state.github["repo"])
+
+
+def _gate_artifact(cfg: Config, stage: str) -> Path | None:
+    return {
+        "hypothesis": cfg.paths.blueprint,
+        "instrumentation": cfg.paths.spec_doc,
+        "instrumentation_qa": cfg.paths.qa_report,
+        "pipeline": cfg.paths.models_dir / "metrics_daily.sql",
+    }.get(stage)
+
+
+def _open_gate_issue(cfg: Config, state: WorkflowState, stage: str) -> None:
+    """Open a GitHub issue assigned to the stage's approver (no-op if GitHub off)."""
+    from .adapters.github import GATE_ROLE, GitHubError
+    from .adapters.notify import gate_notification
+
+    client = _github_client(state)
+    if client is None:
+        return
+    role = GATE_ROLE.get(stage)
+    approver = (state.github.get("approvers") or {}).get(role, "") if role else ""
+    n = gate_notification(stage, [])
+    title = f"[p2r] Approve: {stage} ({state.feature})"
+    art = _gate_artifact(cfg, stage)
+    preview = ""
+    if art and art.exists():
+        text = art.read_text()
+        clipped = text[:6000] + ("\n... (truncated)" if len(text) > 6000 else "")
+        preview = f"\n\n<details><summary>Artifact preview ({art.name})</summary>\n\n```\n{clipped}\n```\n</details>\n"
+    body = (
+        f"**Stage:** {stage}\n**For:** {n.audience}\n\n{n.action}\n\n"
+        f"Reviewer{' @' + approver if approver else ''}: comment `/approve` to clear this gate, "
+        f"or `/request-changes <reason>` to send it back. Closing it yourself (as the approver) also approves.\n"
+        f"Then the operator runs `prd-to-readout sync` to advance the workflow.{preview}"
+    )
+    try:
+        number, url = client.create_issue(title, body, assignee=approver or None)
+        st = state.stage(stage)
+        st.issue_number, st.issue_url = number, url
+        console.print(f"  [green]GitHub gate:[/] opened issue #{number} -> {url}")
+    except GitHubError as e:
+        console.print(f"  [yellow]Could not open GitHub issue:[/] {e}")
+
+
+def _resolve_approvers(blueprint, state: WorkflowState, *, interactive: bool = True) -> dict:
+    """Resolve role->handle from the blueprint, then state, then an interactive prompt."""
+    from .adapters.github import ROLES
+
+    declared = {}
+    if blueprint is not None:
+        declared = {
+            "product": blueprint.approvers.product,
+            "engineering": blueprint.approvers.engineering,
+            "data_science": blueprint.approvers.data_science,
+        }
+    existing = (state.github or {}).get("approvers", {})
+    out = {}
+    for role in ROLES:
+        handle = (existing.get(role) or declared.get(role) or "").lstrip("@")
+        if not handle and interactive:
+            label = role.replace("_", " ")
+            handle = typer.prompt(f"GitHub handle for the {label} approver (no @)").lstrip("@")
+        out[role] = handle
+    return out
 
 
 def handle_errors(fn):
@@ -522,6 +597,109 @@ def request_changes(
     workflow.request_changes(state, name, by=by or None, note=note)
     _save(state, cfg)
     _banner(f"Requested changes on '{name}': {note}")
+    _hint(state)
+
+
+# --------------------------------------------------------------------------- #
+# GitHub-native gates: gh-setup + sync
+# --------------------------------------------------------------------------- #
+def _slug(text: str) -> str:
+    return "".join(c if c.isalnum() else "-" for c in text.lower()).strip("-") or "prd-to-readout"
+
+
+@app.command(name="gh-setup")
+@handle_errors
+def gh_setup(
+    repo: str | None = typer.Option(None, "--repo", help="owner/name or name (default: the feature slug)."),
+    create: bool = typer.Option(False, "--create", help="Create a new PRIVATE GitHub repo."),
+    workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w"),
+):
+    """Enable GitHub-native gates: create/select a private repo and assign approvers.
+
+    Approver handles come from the PRD (blueprint). Any that are missing are asked
+    for here before proceeding.
+    """
+    from .adapters.github import GitHubClient, GitHubError
+
+    cfg = Config.load(workdir=workdir)
+    state = _state(cfg)
+    try:
+        owner = GitHubClient.whoami()
+    except GitHubError as e:
+        raise GateError(str(e)) from None
+
+    blueprint = _load_blueprint(cfg) if cfg.paths.blueprint.exists() else None
+    approvers = _resolve_approvers(blueprint, state, interactive=True)
+
+    name = repo or _slug(state.feature)
+    if create:
+        full = GitHubClient.create_private_repo(name)
+        _banner(f"Created private repo {full}")
+    else:
+        full = name if "/" in name else f"{owner}/{name}"
+
+    client = GitHubClient(full)
+    for role, handle in approvers.items():
+        if not handle:
+            console.print(f"  [yellow]no handle for {role} approver[/]")
+            continue
+        if not client.user_exists(handle):
+            console.print(f"  [yellow]warning: @{handle} not found on GitHub[/]")
+            continue
+        try:
+            client.add_collaborator(handle)
+            console.print(f"  invited [cyan]@{handle}[/] ({role})")
+        except GitHubError as e:
+            console.print(f"  [yellow]could not add @{handle}: {e}[/]")
+
+    state.github = {"repo": full, "approvers": approvers}
+    _save(state, cfg)
+    _banner(f"GitHub gates enabled on {full}")
+    console.print("Approvers must accept the repo invite. Gates now open issues; "
+                  "run [bold]prd-to-readout sync[/] to pull their decisions.")
+
+
+@app.command()
+@handle_errors
+def sync(workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w")):
+    """Pull gate decisions from GitHub issues into the local workflow."""
+    from .adapters.github import GATE_ROLE, GitHubError, evaluate_issue
+
+    cfg = Config.load(workdir=workdir)
+    state = _state(cfg)
+    client = _github_client(state)
+    if client is None:
+        raise GateError("No GitHub repo configured. Run 'prd-to-readout gh-setup' first.")
+
+    changed = []
+    for stage in STAGE_ORDER:
+        st = state.stage(stage)
+        if st.status != "awaiting_approval" or not st.issue_number:
+            continue
+        approver = (state.github.get("approvers") or {}).get(GATE_ROLE.get(stage, ""), "")
+        try:
+            issue = client.get_issue(st.issue_number)
+        except GitHubError as e:
+            console.print(f"  [yellow]#{st.issue_number}: {e}[/]")
+            continue
+        decision, note = evaluate_issue(issue, approver)
+        if decision == "approved":
+            workflow.approve(state, stage, by=approver or "github", note="via GitHub issue")
+            try:
+                client.close_issue(st.issue_number, comment="Approved via prd-to-readout. Gate cleared.")
+            except GitHubError:
+                pass
+            changed.append(f"{stage}: approved by @{approver or 'github'}")
+        elif decision == "changes_requested":
+            workflow.request_changes(state, stage, by=approver or "github", note=note)
+            changed.append(f"{stage}: changes requested ({note})")
+
+    _save(state, cfg)
+    if changed:
+        for c in changed:
+            _banner(c)
+    else:
+        console.print("No gate changes from GitHub.")
     _hint(state)
 
 

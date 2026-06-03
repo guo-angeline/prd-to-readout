@@ -23,6 +23,10 @@ Read the PRD and produce a single analytics blueprint:
 - Fill the decision-framing fields: `problem` (the user friction with baseline if
   stated), `strategic_alignment`, `whats_shipped` (the treatment), `scope_audience`
   (platforms, markets, split).
+- Fill `approvers` with the GitHub handles (no @) of the approvers IF the PRD names
+  them: `product` (PM/DS who approves the metrics), `engineering` (who implements
+  logging), `data_science` (who reviews QA and SQL). Leave a handle empty if the PRD
+  does not name it; do NOT invent handles.
 - Specify a clean A/B experiment design (control vs treatment, split, horizon,
   per-arm sample size, and a minimum detectable effect).
 
