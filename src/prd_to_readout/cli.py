@@ -31,6 +31,70 @@ app = typer.Typer(
 )
 console = Console()
 
+FRIENDLY_ENV = """\
+# prd-to-readout settings. This file is loaded automatically. Keep it private.
+#
+# ============================================================
+#  STEP 1 (required): pick a model and paste a key
+# ============================================================
+# prd-to-readout uses an AI model to read your PRD. Choose ONE option.
+#
+# --- Option A: Claude (recommended) -------------------------
+#   Get a key: https://console.anthropic.com/settings/keys
+#   Paste it after the = sign below (no quotes, no spaces).
+ANTHROPIC_API_KEY=
+P2R_MODEL=claude-sonnet-4-6
+#
+# --- Option B: OpenAI ---------------------------------------
+#   Get a key: https://platform.openai.com/api-keys
+# OPENAI_API_KEY=
+# P2R_MODEL=gpt-4o
+#
+# --- Option C: Free, runs on your computer ------------------
+#   No key, no internet, lower quality. Install https://ollama.com,
+#   then run: ollama pull llama3.1
+# P2R_MODEL=ollama/llama3.1
+#
+# ============================================================
+#  STEP 2 (optional): send approval handoffs to Slack / email
+# ============================================================
+# P2R_SLACK_WEBHOOK=
+# P2R_SMTP_HOST=
+# P2R_EMAIL_TO=
+"""
+
+
+def _print_model_status(cfg: Config) -> None:
+    """Tell the user, in plain language, whether their model is ready."""
+    from .config import model_status
+
+    st = model_status(cfg.model)
+    if st.is_local:
+        console.print(f"[green]✓[/] Model: [cyan]{st.model}[/] (local, no key needed).")
+    elif st.key_present:
+        console.print(f"[green]✓[/] Model ready: [cyan]{st.model}[/] ({st.provider} key found).")
+    else:
+        console.print(f"[yellow]●[/] Model: [cyan]{st.model}[/] ({st.provider}). "
+                      f"[yellow]No API key yet.[/]")
+        console.print(f"   Get one: [bold]{st.help_url}[/]")
+        console.print(f"   Then open [bold]{cfg.workdir / '.env'}[/] and set "
+                      f"[bold]{st.key_var}=your-key[/]")
+
+
+def _require_model(cfg: Config) -> None:
+    """Friendly, early stop (before any AI call) if the model has no key."""
+    from .config import model_status
+
+    st = model_status(cfg.model)
+    if st.key_present:
+        return
+    console.print(f"[bold yellow]Almost there, one setup step.[/] Your model "
+                  f"[cyan]{st.model}[/] ({st.provider}) needs an API key.")
+    console.print(f"  1. Get a key: [bold]{st.help_url}[/]")
+    console.print(f"  2. Put it in [bold]{cfg.workdir / '.env'}[/] like this:  {st.key_var}=your-key-here")
+    console.print("  Prefer free + offline? Set [bold]P2R_MODEL=ollama/llama3.1[/] (see https://ollama.com).")
+    raise typer.Exit(1)
+
 
 # --------------------------------------------------------------------------- #
 # helpers
@@ -306,7 +370,7 @@ def _do_pulse(cfg: Config, blueprint, tracking, state: WorkflowState) -> str:
 # --------------------------------------------------------------------------- #
 @app.command()
 def init(workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w", help="Where to scaffold.")):
-    """Drop a sample PRD + .env template and initialize the workflow state."""
+    """Set up a folder: a sample PRD, a guided .env, and the workflow state."""
     from importlib.resources import files
 
     cfg = Config.load(workdir=workdir)
@@ -317,14 +381,31 @@ def init(workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w", help="Where
         console.print(f"[yellow]prd.md already exists at {prd_path}, leaving it alone.[/]")
     else:
         prd_path.write_text(sample)
-        _banner(f"Wrote sample PRD to {prd_path}")
-    env_path = cfg.workdir / ".env.example"
+        _banner(f"Wrote a sample PRD to {prd_path}")
+
+    env_path = cfg.workdir / ".env"
     if not env_path.exists():
-        env_path.write_text("P2R_MODEL=claude-sonnet-4-6\nP2R_SEED=42\nANTHROPIC_API_KEY=sk-ant-...\n")
-        _banner(f"Wrote {env_path}  (copy to .env and add your key)")
+        env_path.write_text(FRIENDLY_ENV)
+        _banner(f"Wrote {env_path}")
+    else:
+        console.print("[yellow].env already exists, leaving it alone.[/]")
+
     state = _state(cfg)
     _save(state, cfg)
-    console.print("\nNext: [bold]prd-to-readout hypothesize prd.md[/]   (or 'run prd.md')")
+
+    # Re-load so the freshly written .env is reflected, then guide the user.
+    cfg = Config.load(workdir=workdir)
+    console.print("\n[bold]Setup[/]")
+    _print_model_status(cfg)
+    console.print("\n[bold]Next steps[/]")
+    console.print(f"  1. Edit your PRD: [bold]{prd_path}[/]  (or keep the sample to try it out)")
+    from .config import model_status
+    if not model_status(cfg.model).key_present:
+        console.print(f"  2. Add your API key to [bold]{env_path}[/]  (see the comments in that file)")
+        console.print("  3. Run it:  [bold]prd-to-readout run prd.md[/]")
+    else:
+        console.print("  2. Run it:  [bold]prd-to-readout run prd.md[/]")
+    console.print("\n[dim]Tip: 'prd-to-readout run prd.md --yes --preview' shows the whole flow on sample data.[/]")
 
 
 # --------------------------------------------------------------------------- #
@@ -359,6 +440,7 @@ def status(workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w")):
             (st.updated_at or "").replace("T", " ").replace("+00:00", "Z"),
         )
     console.print(table)
+    _print_model_status(cfg)
     _hint(state)
 
 
@@ -375,6 +457,7 @@ def hypothesize(
 ):
     """Stage 1: PRD -> analytics_blueprint.yaml (then review & approve)."""
     cfg = _config(workdir, model, None)
+    _require_model(cfg)
     cfg.paths.ensure()
     state = _state(cfg)
     prd_text = prd.read_text()
@@ -404,6 +487,7 @@ def spec(
     cfg = _config(workdir, model, None)
     state = _state(cfg)
     workflow.ensure_can_run(state, "instrumentation")
+    _require_model(cfg)
     blueprint = _load_blueprint(cfg)
     tracking = _do_spec(cfg, _llm(cfg), blueprint)
     console.print(f"  {len(tracking.events)} events → {cfg.paths.tracking_schema}")
@@ -481,6 +565,7 @@ def build(
     cfg = _config(workdir, model, None)
     state = _state(cfg)
     workflow.ensure_can_run(state, "pipeline")
+    _require_model(cfg)
     blueprint = _load_blueprint(cfg)
     tracking = _load_tracking(cfg)
     sql, attempts = _do_pipeline(cfg, _llm(cfg), blueprint, tracking)
@@ -530,6 +615,7 @@ def readout(
             console.print("Monitor with [bold]prd-to-readout pulse[/], or pass --force to generate now.")
             raise typer.Exit(0)
 
+    _require_model(cfg)
     full = _do_readout(cfg, _llm(cfg), blueprint, tracking, state)
     _do_pulse(cfg, blueprint, tracking, state)  # refresh the monitor alongside the decision
     _finish_stage(cfg, state, "readout", [cfg.paths.readout_doc])
@@ -719,6 +805,7 @@ def run(
 ):
     """Walk the whole workflow. Stops at each human gate unless --yes."""
     cfg = _config(workdir, model, seed)
+    _require_model(cfg)
     cfg.effect_size = effect
     cfg.paths.ensure()
     state = _state(cfg)

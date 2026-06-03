@@ -52,17 +52,36 @@ Two things make it trustworthy rather than just slick:
 - [Configuration](#configuration)
 - [Generated artifacts](#generated-artifacts)
 - [Architecture and extension points](#architecture-and-extension-points)
+- [Install](#install)
 - [Development](#development)
 
 ## Quickstart
 
 ```bash
-pip install prd-to-readout
-prd-to-readout init                 # sample PRD + .env template + workflow state
-cp .env.example .env                # add a key, or point P2R_MODEL at a local model
+pip install prd-to-readout        # not on PyPI yet: see "Install" below to install from source
+prd-to-readout init               # creates a sample prd.md, a guided .env, and workflow state
+```
 
-# See the whole loop instantly on simulated data (clearly labeled a preview):
-prd-to-readout run prd.md --yes --preview
+`init` tells you whether your model is ready and exactly what to do next.
+
+### Set up your model (required)
+
+prd-to-readout reads your PRD with an AI model, so it needs one before the AI steps run. Open the
+`.env` file that `init` created and pick **one** option:
+
+| Option | What to do |
+|--------|------------|
+| **Claude** (recommended) | Get a key at <https://console.anthropic.com/settings/keys>, then put `ANTHROPIC_API_KEY=your-key` in `.env` |
+| **OpenAI** | Get a key at <https://platform.openai.com/api-keys>, then set `OPENAI_API_KEY=your-key` and `P2R_MODEL=gpt-4o` |
+| **Free, on your computer** | Install [Ollama](https://ollama.com), run `ollama pull llama3.1`, and set `P2R_MODEL=ollama/llama3.1` (no key, works offline, lower quality) |
+
+Run `prd-to-readout status` anytime to see the model line. If a key is missing, the tool says so in
+plain language and points at the exact file and line to fix, so you never hit a cryptic error.
+
+### See it run
+
+```bash
+prd-to-readout run prd.md --yes --preview   # the whole flow on sample data, labeled a preview
 ```
 
 The real, gated flow runs stage by stage. Each stage stops at a gate; you approve in the terminal
@@ -291,6 +310,16 @@ Three pluggable interfaces:
 
 The SQL destination is pluggable too: the agent emits DuckDB SQL today, and the warehouse-agnostic
 metric bindings mean a contributor can add a Snowflake or dbt generator without touching the rest.
+
+## Install
+
+Not published to PyPI yet, so install from source. To just use it (puts `prd-to-readout` and `p2r`
+on your PATH):
+
+```bash
+git clone https://github.com/guo-angeline/prd-to-readout.git
+uv tool install --editable ./prd-to-readout      # or: pipx install ./prd-to-readout
+```
 
 ## Development
 

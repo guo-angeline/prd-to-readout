@@ -26,6 +26,7 @@ _SECTIONS = ReadoutSections(
 
 
 def test_full_gated_workflow(tmp_path, blueprint, tracking, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")  # satisfy the model preflight (LLM is stubbed)
     bp_json = blueprint.model_dump_json()
     tr_json = tracking.model_dump_json()
     good_sql = pipeline_agent.fallback_sql(blueprint, tracking)
@@ -86,6 +87,7 @@ def test_full_gated_workflow(tmp_path, blueprint, tracking, monkeypatch):
 
 
 def test_run_yes_preview_one_shot(tmp_path, blueprint, tracking, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")  # satisfy the model preflight (LLM is stubbed)
     bp_json = blueprint.model_dump_json()
     tr_json = tracking.model_dump_json()
     good_sql = pipeline_agent.fallback_sql(blueprint, tracking)

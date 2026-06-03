@@ -42,6 +42,7 @@ def test_readout_blocked_before_window(tmp_path, blueprint, tracking):
 
 
 def test_readout_allowed_after_window(tmp_path, blueprint, tracking, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")  # satisfy the model preflight (LLM is stubbed)
     from prd_to_readout import cli
     from prd_to_readout.agents.readout_agent import ReadoutSections
 
