@@ -10,7 +10,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from prd_to_readout.agents import logging_agent, pipeline_agent, pulse_agent, readout_agent
+from prd_to_readout.agents import (
+    hypothesis_agent,
+    logging_agent,
+    pipeline_agent,
+    pulse_agent,
+    readout_agent,
+)
 from prd_to_readout.agents.readout_agent import ReadoutSections
 from prd_to_readout.core import charts, health, mockgen, stats
 from prd_to_readout.core.duckdb_runner import DuckDBRunner
@@ -108,6 +114,7 @@ def main() -> None:
     tracking = TrackingSchema.model_validate(TRACKING_JSON)
 
     (OUT / "analytics_blueprint.yaml").write_text(bp.to_yaml())
+    (OUT / "ANALYTICS_BLUEPRINT.md").write_text(hypothesis_agent.render_blueprint_doc(bp))
     (OUT / "tracking_schema.json").write_text(json.dumps(TRACKING_JSON, indent=2))
     snip = OUT / "snippets"
     snip.mkdir(exist_ok=True)

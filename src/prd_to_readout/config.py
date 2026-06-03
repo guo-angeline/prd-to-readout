@@ -72,6 +72,10 @@ class Paths:
         return self.root / "READOUT.md"
 
     @property
+    def blueprint_doc(self) -> Path:
+        return self.root / "ANALYTICS_BLUEPRINT.md"
+
+    @property
     def spec_doc(self) -> Path:
         return self.root / "LOGGING_SPEC.md"
 

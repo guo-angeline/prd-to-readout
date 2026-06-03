@@ -159,7 +159,7 @@ def _github_client(state: WorkflowState):
 
 def _gate_artifact(cfg: Config, stage: str) -> Path | None:
     return {
-        "hypothesis": cfg.paths.blueprint,
+        "hypothesis": cfg.paths.blueprint_doc,
         "instrumentation": cfg.paths.spec_doc,
         "instrumentation_qa": cfg.paths.qa_report,
         "pipeline": cfg.paths.models_dir / "metrics_daily.sql",
@@ -263,7 +263,8 @@ def _do_hypothesis(cfg: Config, llm, prd_text: str):
     with _working("Reading your PRD and drafting the metrics plan (about 15 to 30s)..."):
         bp = hypothesis_agent.generate_blueprint(prd_text, llm)
     cfg.paths.ensure()
-    cfg.paths.blueprint.write_text(bp.to_yaml())
+    cfg.paths.blueprint.write_text(bp.to_yaml())                               # machine source
+    cfg.paths.blueprint_doc.write_text(hypothesis_agent.render_blueprint_doc(bp))  # readable review doc
     return bp
 
 
@@ -482,8 +483,8 @@ def hypothesize(
     state.feature = bp.feature_name
     console.print(f"  primary metric: [cyan]{bp.primary_metric.name}[/]  "
                   f"guardrails: {', '.join(m.name for m in bp.guardrail_metrics) or 'none'}")
-    console.print(f"  → {cfg.paths.blueprint}")
-    _finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint], yes=yes)
+    console.print(f"  review → {cfg.paths.blueprint_doc}   (data: {cfg.paths.blueprint.name})")
+    _finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint_doc, cfg.paths.blueprint], yes=yes)
     _hint(state)
 
 
@@ -832,7 +833,7 @@ def run(
     state.prd_hash = hashlib.sha256(prd_text.encode()).hexdigest()[:12]
 
     steps = [
-        ("hypothesis", [cfg.paths.blueprint]),
+        ("hypothesis", [cfg.paths.blueprint_doc, cfg.paths.blueprint]),
         ("instrumentation", [cfg.paths.spec_doc, cfg.paths.tracking_schema]),
         ("instrumentation_qa", [cfg.paths.db]),
         ("pipeline", [cfg.paths.models_dir / "metrics_daily.sql"]),

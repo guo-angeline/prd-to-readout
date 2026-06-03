@@ -114,7 +114,7 @@ decision; it is not a recurring step.
 
 | # | Stage | Input | Output | Gate |
 |---|-------|-------|--------|------|
-| 1 | `hypothesize` | PRD markdown | `analytics_blueprint.yaml`: primary metric, guardrails, health metrics, hypotheses (if/then/because), experiment design (split, horizon, MDE), and the decision-framing fields the readout needs | PM/DS reviews and approves the metrics |
+| 1 | `hypothesize` | PRD markdown | a readable `ANALYTICS_BLUEPRINT.md` to review, backed by `analytics_blueprint.yaml` (the machine source): primary metric, guardrails, health metrics, hypotheses (if/then/because), experiment design (split, horizon, MDE), and the decision-framing fields the readout needs | PM/DS reads the `.md` and approves |
 | 2 | `spec` | blueprint | `LOGGING_SPEC.md` (the engineer's deliverable), `tracking_schema.json` (events + typed properties + metric bindings), and paste-ready `snippets/track.ts` + `track.py` | engineer implements the logging, ships it, then confirms |
 | 3 | `verify-instrumentation` | tracking spec + a real events source | ingests events into DuckDB and writes `INSTRUMENTATION_QA.md`: every declared event arriving, required properties populated, both arms present, and a sample-ratio-mismatch check | DS confirms the data is trustworthy |
 | 4 | `build` | spec + ingested events | `models/metrics_daily.sql`: the agent writes the aggregation SQL, runs it against DuckDB, and on failure feeds the traceback back to the model and rewrites until it passes (with a deterministic fallback so the loop never dead-ends) | DS reviews the SQL for correctness |
@@ -268,7 +268,8 @@ A run writes these into your working directory (headline artifacts at the root, 
 hidden `.pulse/`):
 
 ```
-analytics_blueprint.yaml     # metrics, guardrails, health metrics, hypotheses, experiment design, approvers
+ANALYTICS_BLUEPRINT.md       # the metrics plan, readable: what you review and approve
+analytics_blueprint.yaml     # the same plan as machine data (edit this to change the plan)
 tracking_schema.json         # events, typed properties, and metric bindings
 LOGGING_SPEC.md              # human-readable spec: the engineer's deliverable
 snippets/track.ts, track.py  # paste-ready logger calls
