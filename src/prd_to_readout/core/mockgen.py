@@ -37,14 +37,14 @@ def _make_event(
     ts: datetime,
     ev: EventSpec | None,
     rng: np.random.Generator,
-    binding: MetricBinding,
-    value: float | None,
+    binding: MetricBinding | None = None,
+    value: float | None = None,
 ) -> dict[str, Any]:
     props: dict[str, Any] = {}
     if ev:
         for p in ev.properties:
             props[p.name] = _dummy_prop(p.type, rng)
-    if binding.value_property is not None and value is not None:
+    if binding is not None and binding.value_property is not None and value is not None:
         props[binding.value_property] = round(value, 4)
     return {"event_name": name, "user_id": uid, "arm": arm, "ts": ts, "props": props}
 
@@ -63,6 +63,7 @@ def generate_events(
     n = exp.users_per_arm
     primary = bp.primary_metric.name
     metrics_by_name = {m.name: m for m in bp.all_metrics()}
+    bound_event_names = {b.event_name for b in schema.bindings}
     events: list[dict[str, Any]] = []
 
     for arm in (exp.control_arm, exp.treatment_arm):
@@ -77,6 +78,13 @@ def generate_events(
                 {"event_name": EXPOSURE_EVENT, "user_id": uid, "arm": arm,
                  "ts": base_ts, "props": {}}
             )
+
+            # Emit every DECLARED event that has no metric binding (e.g. a
+            # session/denominator event) once per user, so the simulated stream
+            # covers the whole spec and instrumentation QA can pass in preview.
+            for ev in schema.events:
+                if ev.name not in bound_event_names:
+                    events.append(_make_event(ev.name, uid, arm, base_ts, ev, rng))
 
             for b in schema.bindings:
                 if b.metric_name not in metrics_by_name:

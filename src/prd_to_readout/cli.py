@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 import typer
@@ -113,6 +114,13 @@ def _banner(text: str) -> None:
     console.print(f"[bold green]▸[/] [bold]{text}[/]")
 
 
+@contextmanager
+def _working(message: str):
+    """Show an animated spinner while a slow step runs, so it never looks stuck."""
+    with console.status(f"[bold cyan]{message}[/]", spinner="dots"):
+        yield
+
+
 def _state(cfg: Config) -> WorkflowState:
     feature = (cfg.workdir / "prd.md").stem if (cfg.workdir / "prd.md").exists() else cfg.workdir.name
     return WorkflowState.load_or_new(cfg.paths.state, feature)
@@ -183,7 +191,8 @@ def _open_gate_issue(cfg: Config, state: WorkflowState, stage: str) -> None:
         f"Then the operator runs `prd-to-readout sync` to advance the workflow.{preview}"
     )
     try:
-        number, url = client.create_issue(title, body, assignee=approver or None)
+        with _working("Opening the GitHub approval issue..."):
+            number, url = client.create_issue(title, body, assignee=approver or None)
         st = state.stage(stage)
         st.issue_number, st.issue_url = number, url
         console.print(f"  [green]GitHub gate:[/] opened issue #{number} -> {url}")
@@ -251,7 +260,8 @@ def _load_tracking(cfg: Config):
 def _do_hypothesis(cfg: Config, llm, prd_text: str):
     from .agents import hypothesis_agent
 
-    bp = hypothesis_agent.generate_blueprint(prd_text, llm)
+    with _working("Reading your PRD and drafting the metrics plan (about 15 to 30s)..."):
+        bp = hypothesis_agent.generate_blueprint(prd_text, llm)
     cfg.paths.ensure()
     cfg.paths.blueprint.write_text(bp.to_yaml())
     return bp
@@ -260,7 +270,8 @@ def _do_hypothesis(cfg: Config, llm, prd_text: str):
 def _do_spec(cfg: Config, llm, blueprint):
     from .agents import logging_agent
 
-    tracking = logging_agent.generate_tracking_schema(blueprint, llm)
+    with _working("Designing the tracking spec and writing the engineer handoff..."):
+        tracking = logging_agent.generate_tracking_schema(blueprint, llm)
     cfg.paths.tracking_schema.write_text(tracking.model_dump_json(indent=2))
     cfg.paths.spec_doc.write_text(logging_agent.render_spec_doc(blueprint, tracking))
     cfg.paths.snippets_dir.mkdir(parents=True, exist_ok=True)
@@ -279,7 +290,8 @@ def _ingest_events(cfg: Config, state: WorkflowState, blueprint, tracking):
         default_seed=cfg.seed, default_effect=cfg.effect_size,
     )
     runner = DuckDBRunner(cfg.paths.db)
-    n = source.load(runner)
+    with _working(f"Loading events from the {source.kind} source..."):
+        n = source.load(runner)
     return runner, n
 
 
@@ -291,9 +303,10 @@ def _do_pipeline(cfg: Config, llm, blueprint, tracking):
     if not runner.table_exists("raw_events"):
         runner.close()
         raise GateError("No events ingested yet. Run 'verify-instrumentation' first.")
-    sql, attempts = pipeline_agent.build_metrics_model(
-        runner, blueprint, tracking, llm, max_attempts=cfg.max_fix_attempts, console=console
-    )
+    with _working("Writing the SQL and testing it against your data (it retries until it runs)..."):
+        sql, attempts = pipeline_agent.build_metrics_model(
+            runner, blueprint, tracking, llm, max_attempts=cfg.max_fix_attempts, console=console
+        )
     cfg.paths.models_dir.mkdir(parents=True, exist_ok=True)
     (cfg.paths.models_dir / "metrics_daily.sql").write_text(sql)
     runner.close()
@@ -338,10 +351,11 @@ def _do_readout(cfg: Config, llm, blueprint, tracking, state: WorkflowState) -> 
     date_label = date.today().isoformat()
     window_label = f"{state.launch_date or 'n/a'} to {date_label}"
     stakeholders = ", ".join(sorted({v for v in ctx.approvals.values() if v})) or "PM, Eng, Data Science"
-    full = readout_agent.generate_readout(
-        blueprint, results, ctx, llm,
-        date_label=date_label, window_label=window_label, stakeholders=stakeholders,
-    )
+    with _working("Writing the launch readout..."):
+        full = readout_agent.generate_readout(
+            blueprint, results, ctx, llm,
+            date_label=date_label, window_label=window_label, stakeholders=stakeholders,
+        )
     cfg.paths.readout_doc.write_text(full)
     return full
 
