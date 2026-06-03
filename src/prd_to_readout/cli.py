@@ -134,6 +134,14 @@ def _hint(state: WorkflowState) -> None:
     console.print(f"\n[dim]Next:[/] {workflow.next_action(state)}")
 
 
+def _advance(cfg: Config, state: WorkflowState, stage: str) -> None:
+    """Gate check that treats running ``stage`` as approval of the prior gate."""
+    cleared = workflow.advance_into(state, stage)
+    if cleared:
+        console.print(f"  [green]✓ approved[/] '{cleared}' [dim](by moving on to {stage})[/]")
+        _save(state, cfg)
+
+
 def _finish_stage(cfg: Config, state: WorkflowState, stage: str, artifacts, *, yes: bool = False) -> str:
     """Complete a stage, fire the handoff notification, open a GitHub gate, persist."""
     from .adapters.notify import build_notifier, gate_notification
@@ -220,6 +228,73 @@ def _resolve_approvers(blueprint, state: WorkflowState, *, interactive: bool = T
             handle = typer.prompt(f"GitHub handle for the {label} approver (no @)").lstrip("@")
         out[role] = handle
     return out
+
+
+def _github_enable(state: WorkflowState, full: str, approvers: dict) -> None:
+    """Invite the declared approvers and record the GitHub config on the state."""
+    from .adapters.github import GitHubClient, GitHubError
+
+    client = GitHubClient(full)
+    for role, handle in approvers.items():
+        if not handle:
+            console.print(f"  [yellow]no handle for {role} approver[/]")
+            continue
+        if not client.user_exists(handle):
+            console.print(f"  [yellow]warning: @{handle} not found on GitHub[/]")
+            continue
+        try:
+            client.add_collaborator(handle)
+            console.print(f"  invited [cyan]@{handle}[/] ({role})")
+        except GitHubError as e:
+            console.print(f"  [yellow]could not add @{handle}: {e}[/]")
+    state.github = {"repo": full, "approvers": approvers}
+
+
+def _maybe_auto_github(cfg: Config, state: WorkflowState, *, yes: bool = False) -> None:
+    """Auto-enable GitHub gates once the blueprint names approvers.
+
+    Called right after the hypothesis stage, before its gate issue is opened, so
+    that gate (and every later one) lands in GitHub. No-op when GitHub is already
+    configured, when no approver handles are declared, or when running with --yes
+    (gates auto-clear locally, so issues would be pointless). If the PRD names
+    approvers but `gh` is missing or unauthenticated, it prints a hint instead of
+    failing the workflow.
+    """
+    if state.github or not cfg.paths.blueprint.exists():
+        return
+    if yes:  # gates auto-approve locally; opening GitHub issues would be moot
+        return
+    from .adapters.github import GitHubClient, GitHubError
+
+    approvers = _resolve_approvers(_load_blueprint(cfg), state, interactive=False)
+    if not any(approvers.values()):
+        console.print(
+            "  [dim]Tip: add an '## Approvers' section to your PRD (GitHub handles), then "
+            "approvals route through GitHub automatically. Or run 'prd-to-readout gh-setup --create'.[/]"
+        )
+        return
+    try:
+        GitHubClient.whoami()
+    except GitHubError as e:
+        console.print(f"  [yellow]GitHub gates not enabled:[/] {e}")
+        console.print(
+            "  [dim]Your PRD names approvers. Run 'gh auth login', then "
+            "'prd-to-readout gh-setup --create' to route approvals through GitHub.[/]"
+        )
+        return
+    name = _slug(state.feature)
+    try:
+        with _working(f"Creating a private GitHub repo '{name}'..."):
+            full = GitHubClient.create_private_repo(name)
+    except GitHubError as e:
+        console.print(f"  [yellow]could not create GitHub repo '{name}':[/] {e}")
+        console.print(
+            "  [dim]Run 'prd-to-readout gh-setup --create --repo <name>' to enable GitHub gates.[/]"
+        )
+        return
+    console.print(f"  [green]GitHub gates:[/] created private repo [cyan]{full}[/]")
+    _github_enable(state, full, approvers)
+    _save(state, cfg)
 
 
 def handle_errors(fn):
@@ -421,6 +496,8 @@ def init(workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w", help="Where
     else:
         console.print("  2. Run it:  [bold]prd-to-readout run prd.md[/]")
     console.print("\n[dim]Tip: 'prd-to-readout run prd.md --yes --preview' shows the whole flow on sample data.[/]")
+    console.print("[dim]Tip: keep the PRD's '## Approvers' section (GitHub handles) and approvals route "
+                  "through a private GitHub repo automatically. Needs 'gh auth login'.[/]")
 
 
 # --------------------------------------------------------------------------- #
@@ -484,6 +561,7 @@ def hypothesize(
     console.print(f"  primary metric: [cyan]{bp.primary_metric.name}[/]  "
                   f"guardrails: {', '.join(m.name for m in bp.guardrail_metrics) or 'none'}")
     console.print(f"  review → {cfg.paths.blueprint_doc}   (data: {cfg.paths.blueprint.name})")
+    _maybe_auto_github(cfg, state, yes=yes)
     _finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint_doc, cfg.paths.blueprint], yes=yes)
     _hint(state)
 
@@ -501,7 +579,7 @@ def spec(
     """Stage 2: blueprint -> tracking spec + snippets, handed off to an engineer."""
     cfg = _config(workdir, model, None)
     state = _state(cfg)
-    workflow.ensure_can_run(state, "instrumentation")
+    _advance(cfg, state, "instrumentation")
     _require_model(cfg)
     blueprint = _load_blueprint(cfg)
     tracking = _do_spec(cfg, _llm(cfg), blueprint)
@@ -530,7 +608,7 @@ def verify_instrumentation(
 
     cfg = _config(workdir, None, None)
     state = _state(cfg)
-    workflow.ensure_can_run(state, "instrumentation_qa")
+    _advance(cfg, state, "instrumentation_qa")
     blueprint = _load_blueprint(cfg)
     tracking = _load_tracking(cfg)
 
@@ -579,7 +657,7 @@ def build(
     """Stage 4: author + self-correct the aggregation SQL, then hand to a DS to review."""
     cfg = _config(workdir, model, None)
     state = _state(cfg)
-    workflow.ensure_can_run(state, "pipeline")
+    _advance(cfg, state, "pipeline")
     _require_model(cfg)
     blueprint = _load_blueprint(cfg)
     tracking = _load_tracking(cfg)
@@ -617,7 +695,7 @@ def readout(
     """
     cfg = _config(workdir, model, None)
     state = _state(cfg)
-    workflow.ensure_can_run(state, "readout")
+    _advance(cfg, state, "readout")
     if window_days is not None:
         state.readout_window_days = window_days
     blueprint = _load_blueprint(cfg)
@@ -739,21 +817,7 @@ def gh_setup(
     else:
         full = name if "/" in name else f"{owner}/{name}"
 
-    client = GitHubClient(full)
-    for role, handle in approvers.items():
-        if not handle:
-            console.print(f"  [yellow]no handle for {role} approver[/]")
-            continue
-        if not client.user_exists(handle):
-            console.print(f"  [yellow]warning: @{handle} not found on GitHub[/]")
-            continue
-        try:
-            client.add_collaborator(handle)
-            console.print(f"  invited [cyan]@{handle}[/] ({role})")
-        except GitHubError as e:
-            console.print(f"  [yellow]could not add @{handle}: {e}[/]")
-
-    state.github = {"repo": full, "approvers": approvers}
+    _github_enable(state, full, approvers)
     _save(state, cfg)
     _banner(f"GitHub gates enabled on {full}")
     console.print("Approvers must accept the repo invite. Gates now open issues; "
@@ -854,6 +918,7 @@ def run(
         full = None
         if stage == "hypothesis":
             state.feature = _do_hypothesis(cfg, llm, prd_text).feature_name
+            _maybe_auto_github(cfg, state, yes=yes)
         elif stage == "instrumentation":
             _do_spec(cfg, llm, _load_blueprint(cfg))
         elif stage == "instrumentation_qa":

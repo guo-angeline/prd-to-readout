@@ -22,7 +22,7 @@ make a call.
 This tool models that **real lifecycle** as a stateful, resumable workflow with human gates and
 handoffs. It writes deterministic code artifacts into your repo at each step, tracks where every
 feature is, files the handoff to the right person, and refuses to run a stage before its predecessor
-is approved.
+has done its work (moving on to a stage approves the gate behind it).
 
 ```
 1. hypothesis         PRD  ->  analytics_blueprint.yaml         🔒 PM/DS approves
@@ -84,33 +84,33 @@ plain language and points at the exact file and line to fix, so you never hit a 
 prd-to-readout run prd.md --yes --preview   # the whole flow on sample data, labeled a preview
 ```
 
-The real, gated flow runs stage by stage. Each stage stops at a gate; you approve in the terminal
-(or in GitHub):
+The real, gated flow runs stage by stage. Each stage stops at a gate. **Running the next stage is
+itself the approval of the one before it**, so you just walk forward, reviewing each artifact as you
+go (use explicit `approve` / `request-changes` only when you want to record an approver or reject):
 
 ```bash
-prd-to-readout hypothesize prd.md
-prd-to-readout approve hypothesis --by you
-prd-to-readout spec                                          # hands the spec to an engineer
+prd-to-readout hypothesize prd.md   # review ANALYTICS_BLUEPRINT.md
+prd-to-readout spec                 # approves hypothesis, hands the spec to an engineer
 # ... engineer ships the logging, events start flowing ...
-prd-to-readout approve instrumentation --by eng
-prd-to-readout verify-instrumentation --source events.csv    # ingest real events + QA
-prd-to-readout approve instrumentation_qa --by ds
-prd-to-readout build                                         # hands the SQL to a data scientist
-prd-to-readout approve pipeline --by ds
+prd-to-readout verify-instrumentation --source events.csv   # approves instrumentation, ingests + QAs
+prd-to-readout build                # approves the QA, hands the SQL to a data scientist
+prd-to-readout readout              # approves the pipeline, writes READOUT.md at the 2-week window
 
 prd-to-readout pulse                # DAILY_PULSE.md: adoption + health, run daily from here on
-prd-to-readout readout              # READOUT.md: the launch decision, at the 2-week window
-
 prd-to-readout status               # the board, at any time
 ```
+
+To reject instead of advance, `request-changes <stage> --note "..."` and re-run that stage. GitHub
+gates are the exception: an open issue must be cleared in GitHub (then `sync`), not by moving on.
 
 `p2r` is a shorter alias for every command.
 
 ## The five stages
 
 Every stage reads the previous stage's artifact, runs its work, then parks at a gate
-(`awaiting_approval`) until a human approves or requests changes. `readout` is the terminal
-decision; it is not a recurring step.
+(`awaiting_approval`). Moving on to the next stage approves it; `approve` / `request-changes` are
+there when you want to name an approver or reject. `readout` is the terminal decision; it is not a
+recurring step.
 
 | # | Stage | Input | Output | Gate |
 |---|-------|-------|--------|------|
@@ -148,8 +148,9 @@ See committed examples: [`READOUT.md`](examples/sample_run/READOUT.md) and
 ## GitHub-native gates
 
 Approvals can live in GitHub instead of the terminal, giving you a real audit trail and a familiar
-review surface. The PRD names the approvers by GitHub handle; the tool creates a private repo,
-invites them, and opens an Issue at each gate assigned to the right person.
+review surface. **Just name the approvers in the PRD.** When the hypothesis stage extracts those
+handles, the tool automatically creates a private repo, invites them, and opens an Issue at each
+gate assigned to the right person, no extra command:
 
 ```bash
 # In the PRD, name the approvers (the hypothesis step extracts these into the blueprint):
@@ -158,10 +159,19 @@ invites them, and opens an Issue at each gate assigned to the right person.
 #   - Engineering (instrumentation): @bob
 #   - Data Science (QA + SQL): @carol
 
-prd-to-readout gh-setup --create --repo my-launch   # create a private repo + invite approvers
-# ... run stages as usual; each gate now opens a GitHub issue assigned to its approver ...
-prd-to-readout sync                                 # pull decisions into the local workflow
+prd-to-readout run prd.md   # hypothesis names approvers -> private repo + per-gate issues, automatically
+prd-to-readout sync         # pull decisions into the local workflow
 ```
+
+This needs the `gh` CLI authenticated (`gh auth login`). If `gh` isn't ready, the run says so and
+stays terminal-gated. To enable GitHub explicitly, or to reuse an existing repo, run `gh-setup`:
+
+```bash
+prd-to-readout gh-setup --create --repo my-launch   # create a private repo + invite approvers
+```
+
+Auto-setup is skipped under `--yes` (gates auto-clear locally, so issues would be moot) and when
+the PRD names no approvers.
 
 Roles map to gates: **product** clears the hypothesis, **engineering** confirms the instrumentation,
 **data science** reviews QA and the SQL.
@@ -172,10 +182,11 @@ one who closed it. Approval always requires a named approver: a gate with no con
 advances through GitHub on its own, and a `/approve` from anyone other than the assigned approver is
 ignored. `sync` reconciles these decisions into the local workflow and closes approved issues.
 
-If the PRD does not list a handle, `gh-setup` asks for it in the CLI before proceeding. This uses the
-`gh` CLI (run `gh auth login` once); there is no server to host, `sync` simply polls. Approvers must
-accept the repo invite to be assignable. Without `gh-setup`, gates stay terminal-based
-(`approve` / `request-changes`), and that path still works as a manual override even with GitHub on.
+If the PRD does not list a handle, `gh-setup` asks for it in the CLI before proceeding (auto-setup
+just skips that role). This uses the `gh` CLI (run `gh auth login` once); there is no server to host,
+`sync` simply polls. Approvers must accept the repo invite to be assignable. Without any approvers or
+`gh`, gates stay terminal-based (`approve` / `request-changes`), and that path still works as a
+manual override even with GitHub on.
 
 ## Real data
 
@@ -232,7 +243,7 @@ preview mode; wiring a real APM or crash reporter is an `EventSource`-style exte
 | `build` | 4 | Author and self-correct the aggregation SQL; notify DS to review |
 | `readout [--force] [--window-days N]` | 5 | The one-off launch decision `READOUT.md`, gated on the window |
 | `pulse` | | Recurring monitor `DAILY_PULSE.md` (adoption + health); run daily |
-| `approve <stage> [--by --note]` / `request-changes <stage> --note` | | Clear or reject a gate from the terminal |
+| `approve <stage> [--by --note]` / `request-changes <stage> --note` | | Explicitly clear (naming an approver) or reject a gate; running the next stage also approves |
 | `gh-setup [--create] [--repo name]` | | Create a private repo + invite approvers; enable GitHub-native gates |
 | `sync` | | Pull gate decisions from GitHub issues into the workflow |
 | `status` | | Show the workflow board and the next action |

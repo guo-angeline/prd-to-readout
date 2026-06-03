@@ -58,3 +58,19 @@ def test_verify_instrumentation_fails_qa_on_truncated_file(tmp_path, blueprint, 
     assert res.exit_code == 1
     state = WorkflowState.load(tmp_path / ".pulse" / "state.yaml")
     assert state.stage("instrumentation_qa").status == "changes_requested"
+
+
+def test_running_a_stage_implicitly_approves_the_prior_gate(tmp_path, blueprint, tracking):
+    events_path = tmp_path / "real_events.csv"
+    _seed_workspace(tmp_path, blueprint, tracking, events_path=events_path)
+    # Leave instrumentation parked at its gate, with no explicit approval.
+    state = WorkflowState.load(tmp_path / ".pulse" / "state.yaml")
+    state.stage("instrumentation").status = "awaiting_approval"
+    state.save(tmp_path / ".pulse" / "state.yaml")
+
+    res = runner.invoke(app, ["verify-instrumentation", "--source", str(events_path), "-w", str(tmp_path)])
+    assert res.exit_code == 0, res.stdout
+
+    state = WorkflowState.load(tmp_path / ".pulse" / "state.yaml")
+    assert state.stage("instrumentation").status == "approved"  # cleared by moving on
+    assert state.stage("instrumentation").approver == "advancing to instrumentation_qa"

@@ -71,4 +71,46 @@ def test_next_action_points_to_first_runnable():
     s = WorkflowState.new("feat")
     assert "hypothesize" in workflow.next_action(s)
     workflow.complete_stage(s, "hypothesis", [])
-    assert "approve hypothesis" in workflow.next_action(s)
+    # At a terminal gate the hint points at the next stage, which approves implicitly.
+    hint = workflow.next_action(s)
+    assert "spec" in hint and "approve it" in hint
+
+
+def test_advance_into_approves_parked_predecessor():
+    s = WorkflowState.new("feat")
+    workflow.complete_stage(s, "hypothesis", [])  # parks at awaiting_approval
+    cleared = workflow.advance_into(s, "instrumentation")
+    assert cleared == "hypothesis"
+    assert s.stage("hypothesis").status == "approved"
+    workflow.ensure_can_run(s, "instrumentation")  # no longer blocked
+
+
+def test_advance_into_blocks_when_predecessor_never_ran():
+    s = WorkflowState.new("feat")  # hypothesis still pending
+    with pytest.raises(workflow.GateError):
+        workflow.advance_into(s, "instrumentation")
+
+
+def test_advance_into_blocks_on_changes_requested():
+    s = WorkflowState.new("feat")
+    workflow.complete_stage(s, "hypothesis", [])
+    workflow.request_changes(s, "hypothesis", note="redo")
+    with pytest.raises(workflow.GateError):
+        workflow.advance_into(s, "instrumentation")
+
+
+def test_advance_into_noop_when_already_approved():
+    s = WorkflowState.new("feat")
+    workflow.complete_stage(s, "hypothesis", [], auto_yes=True)
+    assert workflow.advance_into(s, "instrumentation") is None
+
+
+def test_advance_into_defers_to_github_gate():
+    s = WorkflowState.new("feat")
+    workflow.complete_stage(s, "hypothesis", [])
+    s.github = {"repo": "owner/repo", "approvers": {"product": "alice"}}
+    s.stage("hypothesis").issue_number = 12
+    with pytest.raises(workflow.GateError) as e:
+        workflow.advance_into(s, "instrumentation")
+    assert "#12" in str(e.value) and "sync" in str(e.value)
+    assert s.stage("hypothesis").status == "awaiting_approval"  # not silently bypassed
