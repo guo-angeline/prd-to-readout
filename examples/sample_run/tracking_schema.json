@@ -1,0 +1,35 @@
+{
+  "events": [
+    {
+      "name": "order_completed",
+      "description": "Fired when a user completes payment for an order.",
+      "properties": [
+        {
+          "name": "amount",
+          "type": "number",
+          "required": true,
+          "description": "Order total in USD."
+        }
+      ]
+    },
+    {
+      "name": "order_cancelled",
+      "description": "Fired when a user cancels within the 5-second undo window.",
+      "properties": []
+    }
+  ],
+  "bindings": [
+    {
+      "metric_name": "cart_conversion_rate",
+      "event_name": "order_completed",
+      "kind": "unique_user_conversion",
+      "base_value": 0.32
+    },
+    {
+      "metric_name": "order_cancellation_rate",
+      "event_name": "order_cancelled",
+      "kind": "unique_user_conversion",
+      "base_value": 0.04
+    }
+  ]
+}

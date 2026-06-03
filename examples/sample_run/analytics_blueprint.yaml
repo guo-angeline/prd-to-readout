@@ -1,0 +1,48 @@
+feature_name: One-Tap Checkout
+summary: Let returning customers place an order in a single tap, skipping the multi-screen
+  flow.
+problem: 35% of returning users drop off at the payment step, re-entering details
+  we already have.
+strategic_alignment: Supports the Q2 goal of improving checkout funnel efficiency.
+whats_shipped: A one-tap checkout button for returning users with a saved card, with
+  a 5-second undo.
+scope_audience: 50/50 A/B on iOS and Android, returning US customers with a saved
+  payment method.
+primary_metric:
+  name: cart_conversion_rate
+  description: Share of exposed carts that convert to a completed order.
+  type: rate
+  formula: distinct users who complete an order / distinct exposed users
+  direction: increase
+  unit: proportion
+guardrail_metrics:
+- name: order_cancellation_rate
+  description: Share of exposed users who cancel an order within the undo window.
+  type: rate
+  formula: distinct users who cancel / distinct exposed users
+  direction: decrease
+  unit: proportion
+health_metrics:
+- name: p95_checkout_latency_ms
+  kind: latency
+  unit: ms
+  threshold: 250.0
+- name: crash_rate
+  kind: crash_rate
+  unit: '%'
+  threshold: 1.0
+hypotheses:
+  'null': One-Tap Checkout has no effect on cart conversion rate.
+  alternative: One-Tap Checkout increases cart conversion rate for returning customers.
+  if_we: give returning users a one-tap checkout that reuses their saved card and
+    address
+  then_observe: more carts convert to paid orders, without more cancellations
+  because: we remove redundant friction for users who have already shared payment
+    details
+experiment:
+  control_arm: control
+  treatment_arm: treatment
+  treatment_split: 0.5
+  horizon_days: 14
+  users_per_arm: 3000
+  mde: 0.05
