@@ -12,7 +12,8 @@
 
 * **The Outcome:** In this simulated dry run, conversion separates between arms as the spec intends; real numbers will come from instrumented events.
 * **Key Results:**
-  * **cart_conversion_rate**: **+13.8%** (Statistically Significant)
+  * **cart_conversion_rate**: **+12.7%** (Statistically Significant)
+  * **one_tap_take_rate**: **-3.6%** (Not Significant)
 * **Next Steps:** Approve the blueprint; Hand the logging spec to engineering; Re-run the readout on real events at the 2-week window
 
 ### Context & Problem Statement
@@ -38,13 +39,14 @@
 
 | Metric Name | Metric Type | Expected Direction | Observed Change (%) | P-Value | Stat. Sig? (Y/N) |
 | :---- | :---- | :---- | :---- | :---- | :---- |
-| **cart_conversion_rate** | Success / North Star | ⬆️ | **+13.8%** | *0.001* | **Y** |
+| **cart_conversion_rate** | Success / North Star | ⬆️ | **+12.7%** | *0.002* | **Y** |
+| **one_tap_take_rate** | Adoption / Engagement | ⬆️ | **-3.6%** | *0.475* | **N** |
 
 #### 2. Guardrail & Counter-Metrics
 
 | Guardrail Metric | Expected Max Threshold | Observed Change (%) | Impact / Action Taken |
 | :---- | :---- | :---- | :---- |
-| **order_cancellation_rate** | No increase | **-0.8%** | Moved favorably; safe. |
+| **order_cancellation_rate** | No increase | **-7.4%** | Moved favorably; safe. |
 
 #### 3. Key Deep Dives & Segmentation
 

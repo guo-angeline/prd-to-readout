@@ -7,3 +7,7 @@ def track_order_completed(user_id: str, arm: str, amount: float):
 # Fired when a user cancels within the 5-second undo window.
 def track_order_cancelled(user_id: str, arm: str):
     analytics.track(user_id, "order_cancelled", {"arm": arm})
+
+# Fired when a user completes checkout via the one-tap button.
+def track_one_tap_used(user_id: str, arm: str):
+    analytics.track(user_id, "one_tap_used", {"arm": arm})

@@ -60,6 +60,15 @@ def test_recommend_iterate_when_guardrail_harmed(blueprint):
     assert "guardrail" in reason.lower()
 
 
+def test_adoption_metric_does_not_gate_verdict(blueprint):
+    # An adoption metric moving the wrong way is informational; it must NOT block SHIP.
+    primary = _result("cart_conversion_rate", True, "increase", 0.05, 0.16, 0.001)
+    adoption = _result("take_rate", False, "increase", -0.04, -0.13, 0.001)
+    adoption.role = "adoption"
+    verdict, _ = recommend(blueprint, [primary, adoption])
+    assert verdict == "SHIP"
+
+
 def test_assemble_contains_table_and_verdict(blueprint):
     results = [_result("cart_conversion_rate", True, "increase", 0.05, 0.16, 0.001)]
     md = assemble(blueprint, results, "chart-here", "narrative body")

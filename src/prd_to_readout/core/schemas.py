@@ -25,6 +25,24 @@ class Metric(BaseModel):
     formula: str = Field(..., description="plain-language definition of how it's computed")
     direction: Direction = Field("increase", description="which direction is a good outcome")
     unit: str | None = None
+    # "What good looks like": the control baseline and the value that counts as a win.
+    # Same units as the metric (rate = proportion 0-1). Leave None if the PRD has no number.
+    baseline: float | None = Field(None, description="current/control value, before the change")
+    target: float | None = Field(None, description="the value that counts as a 'good' outcome")
+
+    def good_looks_like(self) -> str:
+        """Human phrasing of baseline -> target, or the direction if no numbers."""
+
+        def fmt(v: float) -> str:
+            return f"{v * 100:.1f}%" if self.type == "rate" else f"{v:g}{self.unit or ''}"
+
+        if self.baseline is not None and self.target is not None:
+            return f"{fmt(self.baseline)} -> {fmt(self.target)}"
+        if self.target is not None:
+            return f"reach {fmt(self.target)}"
+        if self.baseline is not None:
+            return f"move from {fmt(self.baseline)} in the right direction"
+        return "higher is better" if self.direction == "increase" else "lower is better"
 
 
 class Hypotheses(BaseModel):
@@ -61,6 +79,22 @@ class HealthMetric(BaseModel):
     threshold: float = Field(..., description="regression threshold: value above this is an alert")
 
 
+class CausalDesign(BaseModel):
+    """Quasi-experimental fallback for when a clean A/B test is blocked.
+
+    Activated only when network effects, marketplace dynamics, or a hard rollout
+    make user-level randomization impossible (template Option B).
+    """
+
+    method: str = Field(
+        ..., description="e.g. difference_in_differences, synthetic_control, rdd, psm"
+    )
+    challenge: str = Field("", description="why a straight A/B test is not possible")
+    treatment_units: str = Field("", description="e.g. test metros/geos that get the change")
+    control_units: str = Field("", description="comparison/synthetic-control units")
+    parallel_trends: str = Field("", description="how pre-period trend match was validated")
+
+
 class ExperimentDesign(BaseModel):
     control_arm: str = "control"
     treatment_arm: str = "treatment"
@@ -68,6 +102,17 @@ class ExperimentDesign(BaseModel):
     horizon_days: int = Field(14, ge=1, le=365)
     users_per_arm: int = Field(2000, ge=50, le=1_000_000)
     mde: float = Field(0.05, gt=0, description="minimum detectable effect, relative")
+    # Power-analysis inputs (template "Power Analysis & Sample Size"). baseline_conversion
+    # is the primary metric's control rate; it drives the required-sample-size math.
+    baseline_conversion: float | None = Field(
+        None, description="primary-metric control rate used for the power calc (0-1)"
+    )
+    bias_mitigation: str = Field(
+        "", description="how peeking/SRM/variance are controlled, e.g. fixed-horizon + SRM checks"
+    )
+    causal: CausalDesign | None = Field(
+        None, description="set ONLY if an A/B test is blocked; otherwise leave null"
+    )
 
 
 class AnalyticsBlueprint(BaseModel):
@@ -78,7 +123,13 @@ class AnalyticsBlueprint(BaseModel):
     strategic_alignment: str = Field("", description="how this maps to team goals / OKRs")
     whats_shipped: str = Field("", description="objective description of the treatment/variant")
     scope_audience: str = Field("", description="who saw the change (platforms, markets, split)")
+    # "What success looks like" (template section): the qualitative and quantitative win state.
+    success_qualitative: str = Field("", description="how user sentiment / behavior should shift")
+    success_quantitative: str = Field("", description="the clear business outcome that defines a win")
     primary_metric: Metric
+    # Adoption & engagement metrics (template section): funnel/depth signals that the feature
+    # is being used. Tracked and reported, but informational, they do NOT gate the ship decision.
+    adoption_metrics: list[Metric] = Field(default_factory=list)
     guardrail_metrics: list[Metric] = Field(default_factory=list)
     health_metrics: list[HealthMetric] = Field(default_factory=list)
     approvers: Approvers = Field(default_factory=Approvers)
@@ -93,7 +144,15 @@ class AnalyticsBlueprint(BaseModel):
         return cls.model_validate(yaml.safe_load(text))
 
     def all_metrics(self) -> list[Metric]:
-        return [self.primary_metric, *self.guardrail_metrics]
+        return [self.primary_metric, *self.adoption_metrics, *self.guardrail_metrics]
+
+    def role_of(self, metric_name: str) -> str:
+        """Classify a metric by which list it lives in: primary / adoption / guardrail."""
+        if metric_name == self.primary_metric.name:
+            return "primary"
+        if any(m.name == metric_name for m in self.adoption_metrics):
+            return "adoption"
+        return "guardrail"
 
 
 class PropertySpec(BaseModel):

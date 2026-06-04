@@ -32,7 +32,8 @@ def recommend(bp: AnalyticsBlueprint, results: list[StatResult],
                 f"need ~{ctx.required_n}. Keep collecting before deciding.")
 
     primary = next((r for r in results if r.is_primary), results[0])
-    guardrails = [r for r in results if not r.is_primary]
+    # Only guardrails gate the decision. Adoption/engagement metrics are informational.
+    guardrails = [r for r in results if r.role == "guardrail"]
     harmed = [r for r in guardrails if r.significant and not r.moved_favorably]
 
     if primary.significant and not primary.moved_favorably:
@@ -50,7 +51,7 @@ def recommend(bp: AnalyticsBlueprint, results: list[StatResult],
 def _results_digest(bp: AnalyticsBlueprint, results: list[StatResult]) -> str:
     lines = []
     for r in results:
-        tag = "PRIMARY" if r.is_primary else "guardrail"
+        tag = "PRIMARY" if r.is_primary else r.role
         lines.append(
             f"[{tag}] {r.metric_name} ({r.metric_type}, good={r.direction}): "
             f"control={_fmt(r.metric_type, r.control_value)}, "
@@ -95,7 +96,7 @@ def _metrics_table(results: list[StatResult]) -> str:
     for r in results:
         favor = "✅" if r.moved_favorably else "⚠️"
         rows.append(
-            f"| `{r.metric_name}` | {'primary' if r.is_primary else 'guardrail'} "
+            f"| `{r.metric_name}` | {r.role} "
             f"| {_fmt(r.metric_type, r.control_value)} | {_fmt(r.metric_type, r.treatment_value)} "
             f"| {r.relative_lift * 100:+.1f}% | {r.effective_p:.4f} "
             f"| {'yes' if r.significant else 'no'} | {favor} |"

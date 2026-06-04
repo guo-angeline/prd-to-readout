@@ -36,6 +36,9 @@ class StatResult:
     n_control: int
     n_treatment: int
     mde: float
+    # primary / adoption / guardrail. Defaults to guardrail so a hand-built result
+    # still gates the verdict; the real role is set from the blueprint in evaluate_metric.
+    role: str = "guardrail"
     notes: list[str] = field(default_factory=list)
     alpha: float = ALPHA
     # Set by apply_holm() once all metrics are known; None means "not adjusted".
@@ -212,6 +215,7 @@ def evaluate_metric(
         metric_type=metric.type,
         direction=metric.direction,
         is_primary=(metric.name == bp.primary_metric.name),
+        role=bp.role_of(metric.name),
         mde=exp.mde,
         notes=notes,
         **stats_d,

@@ -12,7 +12,8 @@ _As of 2026-01-15T00:00:00+00:00._
 
 | Metric | Role | Control | Treatment | Change |
 |---|---|---|---|---|
-| `cart_conversion_rate` | primary | 31.80% | 36.20% | +13.8% |
+| `cart_conversion_rate` | primary | 32.53% | 36.67% | +12.7% |
+| `one_tap_take_rate` | engagement | 41.60% | 40.10% | -3.6% |
 
 ## Health & Regressions
 
@@ -28,13 +29,17 @@ _As of 2026-01-15T00:00:00+00:00._
 ## Trends
 
 ```
-cart_conversion_rate  (by day, normalized 0.2696–0.404)
-  control    ▃▅▆▁▁▃▂▃▅▅▂▄▆▄  0.3028 → 0.3274
-  treatment  ▅▇▅▄█▇▇▅▅▇▆▄▅▅  0.3423 → 0.3559
+cart_conversion_rate  (by day, normalized 0.2393–0.4213)
+  control    ▄▁▄▄▄▃▇▆▄▄▆▆▅▃  0.3169 → 0.2839
+  treatment  ▅▅▆▅▇▇█▄▅▆█▃▅▇  0.3508 → 0.3982
 
-order_cancellation_rate  (by day, normalized 0.02155–0.06061)
-  control    ▃▅█▅▅▅▃▃▆▁█▄▂▂  0.03211 → 0.02655
-  treatment  ▅▂▇▅▄█▅▄▅▄▂▅▁▄  0.04505 → 0.03604
+one_tap_take_rate  (by day, normalized 0.3472–0.4691)
+  control    ▄▇▁▄▇▄▆▁▅▃▇█▄▇  0.4033 → 0.4492
+  treatment  ▃▅▆▂▇▁▅▃▅▄▂▃▇▄  0.3822 → 0.3938
+
+order_cancellation_rate  (by day, normalized 0.01571–0.07216)
+  control    ▄▃▃▄▅▄▄▅▅▃▂█▂▅  0.04115 → 0.04661
+  treatment  ▁▃▃▇▄▅▆▅▃▂▃▃▄▄  0.01571 → 0.03982
 ```
 
 ---

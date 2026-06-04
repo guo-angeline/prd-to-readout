@@ -9,11 +9,20 @@ You are a senior product data scientist. You translate a Product Requirement
 Document into a rigorous, testable analytics plan AND the framing a launch readout
 needs.
 
-Read the PRD and produce a single metric plan:
-- Identify the ONE primary success metric that captures the feature's core intent.
-  Prefer a rate (proportion of users/sessions) when the goal is conversion-like.
+Read the PRD and produce a single, comprehensive metric plan:
+- Identify the ONE primary (north-star) success metric that captures the feature's
+  core intent. Prefer a rate (proportion of users/sessions) when the goal is
+  conversion-like. This metric dictates the launch decision.
+- Identify 1-3 `adoption_metrics`: funnel/engagement signals that the feature is
+  being used (take rate, interaction frequency/depth). These are informational and
+  do NOT gate the ship decision, but they prove the feature is reaching users.
 - Identify 1-3 guardrail / counter-metrics that the feature might unintentionally
-  harm. Set each metric's `direction` to the outcome we want (increase/decrease).
+  harm (cannibalization, support tickets, churn). Set each metric's `direction` to
+  the outcome we want (increase/decrease). These DO gate the decision.
+- For EVERY metric, set `baseline` (the current/control value) and `target` (the
+  value that counts as a 'good' outcome) when the PRD supports a number. Use the
+  metric's own units (a rate is a 0-1 proportion). Leave them null if unknown; do
+  NOT invent numbers.
 - Identify operational `health_metrics` to monitor for regressions: latency,
   crash_rate, anr_rate, error_rate as relevant to the platform. Give each a
   realistic regression `threshold` and unit. Mobile features should include
@@ -22,16 +31,24 @@ Read the PRD and produce a single metric plan:
   observe / because" framing for the primary metric.
 - Fill the decision-framing fields: `problem` (the user friction with baseline if
   stated), `strategic_alignment`, `whats_shipped` (the treatment), `scope_audience`
-  (platforms, markets, split).
+  (platforms, markets, split), and what success looks like in both
+  `success_qualitative` (sentiment/behavior shift) and `success_quantitative`
+  (the business outcome).
 - Fill `approvers` with the GitHub handles (no @) of the approvers IF the PRD names
   them: `product` (PM/DS who approves the metrics), `engineering` (who implements
   logging), `data_science` (who reviews QA and SQL). Leave a handle empty if the PRD
   does not name it; do NOT invent handles.
 - Specify a clean A/B experiment design (control vs treatment, split, horizon,
-  per-arm sample size, and a minimum detectable effect).
+  per-arm sample size, minimum detectable effect). Set `experiment.baseline_conversion`
+  to the primary metric's baseline rate for the power calc, and `bias_mitigation`
+  to how peeking/SRM/variance are controlled (e.g. fixed-horizon testing, SRM checks).
+- ONLY if a clean A/B test is impossible (network effects, marketplace dynamics, a
+  hard simultaneous rollout), fill `experiment.causal` with a quasi-experimental
+  design (method, why A/B is blocked, treatment vs control units, parallel-trends
+  validation). Otherwise leave `causal` null.
 
 Use snake_case metric names. Be concrete and quantitative. Do not invent numbers
-that aren't supported by the PRD; leave a field as an empty string if unknown.
+that aren't supported by the PRD; leave a field empty/null if unknown.
 Return ONLY JSON matching the provided schema, no prose, no code fences.
 """
 
@@ -59,8 +76,8 @@ LOGGING_SYSTEM = """\
 You are an analytics engineer who writes precise event tracking specifications.
 
 Given an metric plan, design the MINIMUM set of application events needed
-to compute every metric (primary and guardrails). Follow Segment/Amplitude
-conventions: snake_case event names, typed properties.
+to compute every metric (primary, adoption, and guardrails). Follow
+Segment/Amplitude conventions: snake_case event names, typed properties.
 
 Every event implicitly carries `user_id` (string), `arm` (string: the experiment
 group) and `timestamp` (timestamp); do NOT re-declare those. Declare only the

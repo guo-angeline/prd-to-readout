@@ -38,9 +38,44 @@ def generate_blueprint(prd_text: str, llm: LLMClient) -> AnalyticsBlueprint:
 _GOOD = {"increase": "higher is better", "decrease": "lower is better"}
 
 
+def _metric_table(metrics, *, good_header: str = "What good looks like") -> list[str]:
+    rows = [f"| Metric | Type | {good_header} | Definition |", "|---|---|---|---|"]
+    for m in metrics:
+        rows.append(f"| `{m.name}` | {m.type} | {m.good_looks_like()} | {m.description} |")
+    return rows
+
+
+def _power_lines(bp: AnalyticsBlueprint) -> list[str]:
+    """Power-analysis summary: baseline conversion, MDE, required sample size."""
+    exp = bp.experiment
+    baseline = exp.baseline_conversion
+    if baseline is None and bp.primary_metric.type == "rate":
+        baseline = bp.primary_metric.baseline
+    out = [f"- **Minimum detectable effect:** {exp.mde:.0%} relative lift, 80% power, two-tailed at α=0.05."]
+    if baseline is not None:
+        out.append(f"- **Baseline conversion:** {baseline * 100:.1f}%.")
+        try:
+            from ..core.stats import required_sample_size_rate
+
+            need = required_sample_size_rate(baseline, exp.mde)
+            short = " (current plan may be underpowered)" if exp.users_per_arm < need else ""
+            out.append(f"- **Required sample size:** ~{need:,} users per arm to detect that lift{short}.")
+        except Exception:
+            pass
+    if exp.bias_mitigation:
+        out.append(f"- **Bias & variance control:** {exp.bias_mitigation}")
+    return out
+
+
 def render_blueprint_doc(bp: AnalyticsBlueprint) -> str:
-    """A friendly, readable version of the blueprint for a PM to review at the gate."""
+    """A friendly, readable version of the blueprint for a PM to review at the gate.
+
+    Mirrors the product-analytics-plan template: overview + core hypothesis, what
+    success looks like, the full metric framework (goal / adoption / guardrails /
+    health), and the experiment + power analysis.
+    """
     h = bp.hypotheses
+    pm = bp.primary_metric
     lines = [
         f"# Metric Plan: {bp.feature_name}",
         "",
@@ -50,6 +85,16 @@ def render_blueprint_doc(bp: AnalyticsBlueprint) -> str:
         "`metric_plan.yaml` _(the machine-readable file next to this one) and re-run_ "
         "`prd-to-readout metric`.",
         "",
+        "## What we are building",
+        "",
+        f"- **What's shipped:** {bp.whats_shipped or bp.summary}",
+        f"- **Who sees it:** {bp.scope_audience or f'{bp.experiment.treatment_split:.0%} in treatment'}",
+        f"- **Why it matters:** {bp.problem or 'n/a'}",
+    ]
+    if bp.strategic_alignment:
+        lines.append(f"- **Strategic fit:** {bp.strategic_alignment}")
+    lines += [
+        "",
         "## The bet",
         "",
         f"- **If we** {h.if_we or bp.summary}",
@@ -57,22 +102,39 @@ def render_blueprint_doc(bp: AnalyticsBlueprint) -> str:
         f"- **Because** {h.because or 'n/a'}",
         f"- **We can detect** a {bp.experiment.mde:.0%} relative change at 80% power.",
         "",
+    ]
+
+    if bp.success_qualitative or bp.success_quantitative:
+        lines += ["## What success looks like", ""]
+        if bp.success_quantitative:
+            lines.append(f"- **By the numbers:** {bp.success_quantitative}")
+        if bp.success_qualitative:
+            lines.append(f"- **For users:** {bp.success_qualitative}")
+        lines.append("")
+
+    lines += [
         "## Primary metric (the one that decides ship or not)",
         "",
-        f"**{bp.primary_metric.name}** ({bp.primary_metric.type}, {_GOOD.get(bp.primary_metric.direction, '')})",
+        f"**{pm.name}** ({pm.type}, {_GOOD.get(pm.direction, '')})",
         "",
-        f"{bp.primary_metric.description}",
+        f"{pm.description}",
         "",
-        f"_How it is computed:_ {bp.primary_metric.formula}",
+        f"_What good looks like:_ {pm.good_looks_like()}",
+        "",
+        f"_How it is computed:_ {pm.formula}",
         "",
     ]
 
+    if bp.adoption_metrics:
+        lines += ["## Adoption & engagement (is the feature being used?)", "",
+                  "_Informational. These confirm reach and depth but do not gate the ship decision._",
+                  ""]
+        lines += _metric_table(bp.adoption_metrics, good_header="Target")
+        lines.append("")
+
     if bp.guardrail_metrics:
-        lines += ["## Guardrails (must not get worse)", "",
-                  "| Metric | Type | What good looks like | Definition |",
-                  "|---|---|---|---|"]
-        for m in bp.guardrail_metrics:
-            lines.append(f"| `{m.name}` | {m.type} | {_GOOD.get(m.direction, '')} | {m.description} |")
+        lines += ["## Guardrails (must not get worse)", ""]
+        lines += _metric_table(bp.guardrail_metrics)
         lines.append("")
 
     if bp.health_metrics:
@@ -89,8 +151,22 @@ def render_blueprint_doc(bp: AnalyticsBlueprint) -> str:
         "",
         f"- {exp.control_arm} vs {exp.treatment_arm}, {exp.treatment_split:.0%} in treatment",
         f"- About {exp.users_per_arm:,} users per group, over {exp.horizon_days} days",
+        *_power_lines(bp),
         "",
     ]
+
+    if exp.causal:
+        c = exp.causal
+        lines += [
+            "### If we cannot run a clean A/B test",
+            "",
+            f"- **Why not:** {c.challenge or 'n/a'}",
+            f"- **Method:** {c.method}",
+            f"- **Treatment vs control:** {c.treatment_units or 'n/a'} vs {c.control_units or 'n/a'}",
+        ]
+        if c.parallel_trends:
+            lines.append(f"- **Parallel-trends check:** {c.parallel_trends}")
+        lines.append("")
 
     ap = bp.approvers
     if ap.product or ap.engineering or ap.data_science:

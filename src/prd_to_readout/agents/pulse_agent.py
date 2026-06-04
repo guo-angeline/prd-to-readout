@@ -36,7 +36,7 @@ def _adoption_table(results: list[StatResult]) -> str:
     )
     rows = []
     for r in results:
-        if not (r.is_primary or r.direction == "increase"):
+        if not (r.is_primary or r.role == "adoption"):
             continue
         role = "primary" if r.is_primary else "engagement"
         rows.append(

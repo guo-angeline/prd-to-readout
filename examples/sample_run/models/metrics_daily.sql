@@ -1,4 +1,6 @@
 CREATE OR REPLACE TABLE metrics_daily AS
 SELECT 'cart_conversion_rate' AS metric_name, arm, CAST(ts AS DATE) AS day, count(DISTINCT CASE WHEN event_name='order_completed' THEN user_id END) AS numerator, count(DISTINCT user_id) AS denominator, count(DISTINCT CASE WHEN event_name='order_completed' THEN user_id END) * 1.0 / nullif(count(DISTINCT user_id), 0) AS value FROM raw_events GROUP BY arm, CAST(ts AS DATE)
 UNION ALL
+SELECT 'one_tap_take_rate' AS metric_name, arm, CAST(ts AS DATE) AS day, count(DISTINCT CASE WHEN event_name='one_tap_used' THEN user_id END) AS numerator, count(DISTINCT user_id) AS denominator, count(DISTINCT CASE WHEN event_name='one_tap_used' THEN user_id END) * 1.0 / nullif(count(DISTINCT user_id), 0) AS value FROM raw_events GROUP BY arm, CAST(ts AS DATE)
+UNION ALL
 SELECT 'order_cancellation_rate' AS metric_name, arm, CAST(ts AS DATE) AS day, count(DISTINCT CASE WHEN event_name='order_cancelled' THEN user_id END) AS numerator, count(DISTINCT user_id) AS denominator, count(DISTINCT CASE WHEN event_name='order_cancelled' THEN user_id END) * 1.0 / nullif(count(DISTINCT user_id), 0) AS value FROM raw_events GROUP BY arm, CAST(ts AS DATE);

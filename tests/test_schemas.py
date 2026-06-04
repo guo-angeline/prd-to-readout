@@ -16,6 +16,27 @@ def test_all_metrics_includes_primary_first(blueprint):
     assert len(metrics) == 1 + len(blueprint.guardrail_metrics)
 
 
+def test_all_metrics_orders_primary_adoption_guardrails(blueprint):
+    from prd_to_readout.core.schemas import Metric
+
+    adoption = Metric(name="take_rate", description="d", type="rate", formula="f")
+    bp = blueprint.model_copy(update={"adoption_metrics": [adoption]})
+    names = [m.name for m in bp.all_metrics()]
+    assert names == ["cart_conversion_rate", "take_rate", "order_cancellation_rate"]
+    assert bp.role_of("cart_conversion_rate") == "primary"
+    assert bp.role_of("take_rate") == "adoption"
+    assert bp.role_of("order_cancellation_rate") == "guardrail"
+
+
+def test_good_looks_like_phrasing():
+    from prd_to_readout.core.schemas import Metric
+
+    rate = Metric(name="r", description="d", type="rate", formula="f", baseline=0.3, target=0.36)
+    assert rate.good_looks_like() == "30.0% -> 36.0%"
+    bare = Metric(name="r", description="d", type="rate", formula="f", direction="decrease")
+    assert bare.good_looks_like() == "lower is better"
+
+
 def test_rejects_bad_split():
     with pytest.raises(ValidationError):
         AnalyticsBlueprint.model_validate(
