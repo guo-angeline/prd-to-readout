@@ -23,6 +23,38 @@ file, pick ONE item, ship it, and update the log. Keep this file on the
 
 ## Backlog (pick from the top; reorder freely)
 
+### R1 — Real-data warehouse source (TOP PRIORITY, build in order)
+
+Goal: let a launch decision run on a live warehouse query, not just a file or the
+simulated preview. The FILE path (`FileSource`, csv/parquet/json) already exists
+and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
+
+Build these increments in order, one per iteration, each test-gated:
+
+- [ ] R1.1 Extract the row -> canonical-event logic out of `FileSource.load`
+      (`_col`, props extraction, missing-column check) into a shared helper in
+      `adapters/source.py` so other sources reuse it. Pure refactor; existing
+      `test_source.py` must stay green. Add a focused unit test for the helper.
+- [ ] R1.2 Add `WarehouseSource`: constructed with a row iterator / cursor + the
+      canonical column mapping, it maps rows to `raw_events` via the R1.1 helper.
+      No network: take an injected "fetch rows" callable so it is unit-testable
+      with a fake. Implements the `EventSource` protocol (`load`, `descriptor`).
+      Add tests (happy path, column mapping, missing column, props packing).
+- [ ] R1.3 Wire `source_from_config` to build a `WarehouseSource` for
+      `kind == "warehouse"` (config carries the query + mapping + a driver name).
+      Add a dispatch test. Keep simulated/file behavior unchanged.
+- [ ] R1.4 BigQuery driver behind an OPTIONAL import (`google-cloud-bigquery`):
+      a thin function that runs the configured SQL and yields rows for
+      `WarehouseSource`. Guard the import so the package still works without it;
+      unit-test with a fake client (no real creds/network). Document creds via env.
+- [ ] R1.5 CLI: a way to point at a warehouse (e.g. `verify-logging --warehouse-query
+      <sql> --warehouse-driver bigquery`) that stores the warehouse source in state,
+      mirroring how `--source <file>` works today. Add a CLI test.
+- [ ] R1.6 Docs + a runnable example (a tiny in-memory/duckdb "warehouse" fake) so
+      `examples/` shows the warehouse path without external services.
+
+### Hardening (background, lower priority)
+
 - [ ] Add a model_validator to `AnalyticsBlueprint` rejecting duplicate metric
       names across primary/adoption/guardrails (collisions break bindings + SQL).
       Add a test.
