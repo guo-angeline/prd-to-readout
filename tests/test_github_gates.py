@@ -110,8 +110,8 @@ def test_finish_stage_opens_issue_when_github_configured(tmp_path, blueprint, mo
     fake = FakeGH()
     monkeypatch.setattr(cli, "_github_client", lambda s: fake)
 
-    cli._finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint])
-    assert state.stage("hypothesis").issue_number == 1
+    cli._finish_stage(cfg, state, "metric", [cfg.paths.blueprint])
+    assert state.stage("metric").issue_number == 1
     assert fake.created[0]["assignee"] == "alice"
 
 
@@ -119,8 +119,8 @@ def test_no_github_means_no_issue(tmp_path, blueprint):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
     state = WorkflowState.new("feat")  # github is None
-    cli._finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint])
-    assert state.stage("hypothesis").issue_number is None
+    cli._finish_stage(cfg, state, "metric", [cfg.paths.blueprint])
+    assert state.stage("metric").issue_number is None
 
 
 def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
@@ -128,7 +128,7 @@ def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
     cfg.paths.ensure()
     state = WorkflowState.new("feat")
     state.github = {"repo": "owner/repo", "approvers": {"data_science": "carol"}}
-    st = state.stage("pipeline")
+    st = state.stage("query")
     st.status = "awaiting_approval"
     st.issue_number = 7
     state.save(cfg.paths.state)
@@ -140,8 +140,8 @@ def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
     res = runner.invoke(app, ["sync", "-w", str(tmp_path)])
     assert res.exit_code == 0, res.stdout
     reloaded = WorkflowState.load(cfg.paths.state)
-    assert reloaded.stage("pipeline").status == "approved"
-    assert reloaded.stage("pipeline").approver == "carol"
+    assert reloaded.stage("query").status == "approved"
+    assert reloaded.stage("query").approver == "carol"
     assert 7 in fake.closed
 
 
@@ -168,3 +168,62 @@ def test_resolve_approvers_prompts_for_missing(tmp_path, blueprint, monkeypatch)
     monkeypatch.setattr(cli.typer, "prompt", lambda *a, **k: next(prompts))
     out = cli._resolve_approvers(blueprint, state, interactive=True)
     assert out == {"product": "alice", "engineering": "bob", "data_science": "carol"}
+
+
+# --------------------------------------------------------------------------- #
+# auto-enable GitHub gates when the PRD declares approvers
+# --------------------------------------------------------------------------- #
+def test_auto_github_creates_repo_when_approvers_declared(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
+    blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())
+    state = WorkflowState.new("One-Tap Checkout")
+
+    monkeypatch.setattr(github, "GitHubClient", FakeGH)
+    cli._maybe_auto_github(cfg, state)
+
+    assert state.github is not None
+    assert state.github["repo"] == "owner/one-tap-checkout"
+    assert state.github["approvers"]["data_science"] == "carol"
+
+
+def test_auto_github_noop_without_approvers(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())  # default Approvers() are empty
+    state = WorkflowState.new("feat")
+
+    monkeypatch.setattr(github, "GitHubClient", FakeGH)
+    cli._maybe_auto_github(cfg, state)
+
+    assert state.github is None  # stays terminal-gated
+
+
+def test_auto_github_noop_with_yes(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
+    blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())
+    state = WorkflowState.new("feat")
+
+    monkeypatch.setattr(github, "GitHubClient", FakeGH)
+    cli._maybe_auto_github(cfg, state, yes=True)
+
+    assert state.github is None  # --yes auto-clears gates locally; no GitHub issues
+
+
+def test_auto_github_hint_when_gh_unavailable(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
+    blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())
+    state = WorkflowState.new("feat")
+
+    def boom():
+        raise github.GitHubError("gh not authed")
+
+    monkeypatch.setattr(github.GitHubClient, "whoami", staticmethod(boom))
+    cli._maybe_auto_github(cfg, state)  # must not raise
+
+    assert state.github is None

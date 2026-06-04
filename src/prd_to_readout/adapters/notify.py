@@ -133,14 +133,14 @@ def build_notifier(env: dict | None = None) -> MultiNotifier:
 
 # Per-gate message templates: stage -> (audience, title, action).
 _GATE_MESSAGES = {
-    "hypothesis": ("PM / data scientist", "Metric blueprint ready for review",
-                   "Read ANALYTICS_BLUEPRINT.md, then: prd-to-readout approve hypothesis"),
-    "instrumentation": ("engineer", "Logging spec ready to implement",
-                        "Implement the events in LOGGING_SPEC.md, ship them, then: prd-to-readout approve instrumentation"),
-    "instrumentation_qa": ("data scientist", "Instrumentation QA complete",
-                           "Review INSTRUMENTATION_QA.md, then: prd-to-readout approve instrumentation_qa"),
-    "pipeline": ("data scientist", "Aggregation SQL ready for review",
-                 "Review models/metrics_daily.sql for correctness, then: prd-to-readout approve pipeline"),
+    "metric": ("PM / data scientist", "Metric plan ready for review",
+                   "Read METRIC_PLAN.md, then: prd-to-readout approve metric"),
+    "logging": ("engineer", "Logging spec ready to implement",
+                        "Implement the events in LOGGING_SPEC.md, ship them, then: prd-to-readout approve logging"),
+    "logging_qa": ("data scientist", "Logging QA complete",
+                           "Review LOGGING_QA.md, then: prd-to-readout approve logging_qa"),
+    "query": ("data scientist", "Aggregation SQL ready for review",
+                 "Review models/metrics_daily.sql for correctness, then: prd-to-readout approve query"),
     "readout": ("stakeholders", "Readout published",
                 "See DAILY_PULSE.md for the latest results."),
 }

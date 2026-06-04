@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Turn a PRD into a gated, self-healing analytics workflow.</b><br>
-  Hypotheses, tracking spec, instrumentation QA, reviewed SQL, a launch decision, and a daily health monitor.
+  Hypotheses, tracking spec, logging QA, reviewed SQL, a launch decision, and a daily health monitor.
 </p>
 
 <p align="center">
@@ -22,19 +22,19 @@ make a call.
 This tool models that **real lifecycle** as a stateful, resumable workflow with human gates and
 handoffs. It writes deterministic code artifacts into your repo at each step, tracks where every
 feature is, files the handoff to the right person, and refuses to run a stage before its predecessor
-is approved.
+has done its work (moving on to a stage approves the gate behind it).
 
 ```
-1. hypothesis         PRD  ->  analytics_blueprint.yaml         🔒 PM/DS approves
-2. instrumentation    blueprint -> LOGGING_SPEC.md + snippets   🔔 hand off to an engineer
-3. instrumentation_qa real events -> validated vs the spec      🔒 SRM + coverage checks pass
-4. pipeline           self-corrected DuckDB SQL                 🔔 DS reviews   🔒 approves
+1. metric             PRD  ->  metric_plan.yaml         🔒 PM/DS approves
+2. logging    metric plan -> LOGGING_SPEC.md + snippets   🔔 hand off to an engineer
+3. logging_qa real events -> validated vs the spec      🔒 SRM + coverage checks pass
+4. query              self-corrected DuckDB SQL                 🔔 DS reviews   🔒 approves
 5. readout            READOUT.md, the launch decision           ⏳ at the 2-week window, on real data
 ```
 
 Two things make it trustworthy rather than just slick:
 
-1. **It never grades its own homework.** Before instrumentation exists it runs on simulated data,
+1. **It never grades its own homework.** Before logging exists it runs on simulated data,
    and it labels that output a `SIMULATED PREVIEW` with no ship verdict. A real SHIP/KILL/ITERATE
    call only comes from real, adequately powered data.
 2. **Humans stay in the loop at every gate**, in the terminal or natively in GitHub.
@@ -84,40 +84,40 @@ plain language and points at the exact file and line to fix, so you never hit a 
 prd-to-readout run prd.md --yes --preview   # the whole flow on sample data, labeled a preview
 ```
 
-The real, gated flow runs stage by stage. Each stage stops at a gate; you approve in the terminal
-(or in GitHub):
+The real, gated flow runs stage by stage. Each stage stops at a gate. **Running the next stage is
+itself the approval of the one before it**, so you just walk forward, reviewing each artifact as you
+go (use explicit `approve` / `request-changes` only when you want to record an approver or reject):
 
 ```bash
-prd-to-readout hypothesize prd.md
-prd-to-readout approve hypothesis --by you
-prd-to-readout spec                                          # hands the spec to an engineer
+prd-to-readout metric prd.md   # review METRIC_PLAN.md
+prd-to-readout logging                 # approves metric, hands the spec to an engineer
 # ... engineer ships the logging, events start flowing ...
-prd-to-readout approve instrumentation --by eng
-prd-to-readout verify-instrumentation --source events.csv    # ingest real events + QA
-prd-to-readout approve instrumentation_qa --by ds
-prd-to-readout build                                         # hands the SQL to a data scientist
-prd-to-readout approve pipeline --by ds
+prd-to-readout verify-logging --source events.csv   # approves logging, ingests + QAs
+prd-to-readout query                # approves the QA, hands the SQL to a data scientist
+prd-to-readout readout              # approves the query, writes READOUT.md at the 2-week window
 
 prd-to-readout pulse                # DAILY_PULSE.md: adoption + health, run daily from here on
-prd-to-readout readout              # READOUT.md: the launch decision, at the 2-week window
-
 prd-to-readout status               # the board, at any time
 ```
+
+To reject instead of advance, `request-changes <stage> --note "..."` and re-run that stage. GitHub
+gates are the exception: an open issue must be cleared in GitHub (then `sync`), not by moving on.
 
 `p2r` is a shorter alias for every command.
 
 ## The five stages
 
 Every stage reads the previous stage's artifact, runs its work, then parks at a gate
-(`awaiting_approval`) until a human approves or requests changes. `readout` is the terminal
-decision; it is not a recurring step.
+(`awaiting_approval`). Moving on to the next stage approves it; `approve` / `request-changes` are
+there when you want to name an approver or reject. `readout` is the terminal decision; it is not a
+recurring step.
 
 | # | Stage | Input | Output | Gate |
 |---|-------|-------|--------|------|
-| 1 | `hypothesize` | PRD markdown | a readable `ANALYTICS_BLUEPRINT.md` to review, backed by `analytics_blueprint.yaml` (the machine source): primary metric, guardrails, health metrics, hypotheses (if/then/because), experiment design (split, horizon, MDE), and the decision-framing fields the readout needs | PM/DS reads the `.md` and approves |
-| 2 | `spec` | blueprint | `LOGGING_SPEC.md` (the engineer's deliverable), `tracking_schema.json` (events + typed properties + metric bindings), and paste-ready `snippets/track.ts` + `track.py` | engineer implements the logging, ships it, then confirms |
-| 3 | `verify-instrumentation` | tracking spec + a real events source | ingests events into DuckDB and writes `INSTRUMENTATION_QA.md`: every declared event arriving, required properties populated, both arms present, and a sample-ratio-mismatch check | DS confirms the data is trustworthy |
-| 4 | `build` | spec + ingested events | `models/metrics_daily.sql`: the agent writes the aggregation SQL, runs it against DuckDB, and on failure feeds the traceback back to the model and rewrites until it passes (with a deterministic fallback so the loop never dead-ends) | DS reviews the SQL for correctness |
+| 1 | `metric` | PRD markdown | a readable `METRIC_PLAN.md` to review, backed by `metric_plan.yaml` (the machine source): primary metric, guardrails, health metrics, hypotheses (if/then/because), experiment design (split, horizon, MDE), and the decision-framing fields the readout needs | PM/DS reads the `.md` and approves |
+| 2 | `logging` | metric plan | `LOGGING_SPEC.md` (the engineer's deliverable), `tracking_schema.json` (events + typed properties + metric bindings), and paste-ready `snippets/track.ts` + `track.py` | engineer implements the logging, ships it, then confirms |
+| 3 | `verify-logging` | tracking spec + a real events source | ingests events into DuckDB and writes `LOGGING_QA.md`: every declared event arriving, required properties populated, both arms present, and a sample-ratio-mismatch check | DS confirms the data is trustworthy |
+| 4 | `query` | spec + ingested events | `models/metrics_daily.sql`: the agent writes the aggregation SQL, runs it against DuckDB, and on failure feeds the traceback back to the model and rewrites until it passes (with a deterministic fallback so the loop never dead-ends) | DS reviews the SQL for correctness |
 | 5 | `readout` | approved data | `READOUT.md`: the one-off launch decision (see below) | gated on the launch window and statistical power, not a human gate |
 
 The metric bindings in the tracking spec are the contract: the simulator uses them to fabricate
@@ -148,22 +148,32 @@ See committed examples: [`READOUT.md`](examples/sample_run/READOUT.md) and
 ## GitHub-native gates
 
 Approvals can live in GitHub instead of the terminal, giving you a real audit trail and a familiar
-review surface. The PRD names the approvers by GitHub handle; the tool creates a private repo,
-invites them, and opens an Issue at each gate assigned to the right person.
+review surface. **Just name the approvers in the PRD.** When the metric stage extracts those
+handles, the tool automatically creates a private repo, invites them, and opens an Issue at each
+gate assigned to the right person, no extra command:
 
 ```bash
-# In the PRD, name the approvers (the hypothesis step extracts these into the blueprint):
+# In the PRD, name the approvers (the metric step extracts these into the metric plan):
 #   ## Approvers
 #   - Product / metrics owner: @alice
-#   - Engineering (instrumentation): @bob
+#   - Engineering (logging): @bob
 #   - Data Science (QA + SQL): @carol
 
-prd-to-readout gh-setup --create --repo my-launch   # create a private repo + invite approvers
-# ... run stages as usual; each gate now opens a GitHub issue assigned to its approver ...
-prd-to-readout sync                                 # pull decisions into the local workflow
+prd-to-readout run prd.md   # metric stage names approvers -> private repo + per-gate issues, automatically
+prd-to-readout sync         # pull decisions into the local workflow
 ```
 
-Roles map to gates: **product** clears the hypothesis, **engineering** confirms the instrumentation,
+This needs the `gh` CLI authenticated (`gh auth login`). If `gh` isn't ready, the run says so and
+stays terminal-gated. To enable GitHub explicitly, or to reuse an existing repo, run `gh-setup`:
+
+```bash
+prd-to-readout gh-setup --create --repo my-launch   # create a private repo + invite approvers
+```
+
+Auto-setup is skipped under `--yes` (gates auto-clear locally, so issues would be moot) and when
+the PRD names no approvers.
+
+Roles map to gates: **product** clears the metric gate, **engineering** confirms the logging,
 **data science** reviews QA and the SQL.
 
 The approver clears a gate by commenting **`/approve`**, or sends it back with
@@ -172,14 +182,15 @@ one who closed it. Approval always requires a named approver: a gate with no con
 advances through GitHub on its own, and a `/approve` from anyone other than the assigned approver is
 ignored. `sync` reconciles these decisions into the local workflow and closes approved issues.
 
-If the PRD does not list a handle, `gh-setup` asks for it in the CLI before proceeding. This uses the
-`gh` CLI (run `gh auth login` once); there is no server to host, `sync` simply polls. Approvers must
-accept the repo invite to be assignable. Without `gh-setup`, gates stay terminal-based
-(`approve` / `request-changes`), and that path still works as a manual override even with GitHub on.
+If the PRD does not list a handle, `gh-setup` asks for it in the CLI before proceeding (auto-setup
+just skips that role). This uses the `gh` CLI (run `gh auth login` once); there is no server to host,
+`sync` simply polls. Approvers must accept the repo invite to be assignable. Without any approvers or
+`gh`, gates stay terminal-based (`approve` / `request-changes`), and that path still works as a
+manual override even with GitHub on.
 
 ## Real data
 
-`verify-instrumentation --source events.csv` ingests your exported events (CSV, Parquet, JSON, or
+`verify-logging --source events.csv` ingests your exported events (CSV, Parquet, JSON, or
 JSONL) into the same pipeline that the simulated preview used, so everything downstream is identical.
 The expected columns are `event_name, user_id, arm, ts`, plus either a `props` JSON column or extra
 columns that get packed into `props`. If your export uses different column names, pass a mapping.
@@ -202,14 +213,14 @@ The readout is built for a data scientist to trust:
   at 80% power and gates a hard verdict on reaching it. Underpowered data is labeled `ACCUMULATING`.
 - **Sample-ratio mismatch (SRM).** A chi-square check that arm sizes match the planned split. A
   failing SRM means randomization or logging is broken and the whole experiment is suspect; it is
-  flagged in instrumentation QA.
+  flagged in logging QA.
 - **Honest framing.** Simulated data is a `SIMULATED PREVIEW` with no verdict. Relative-lift
   confidence intervals are reported. A repeated-looks (peeking) caveat is written into every
   readout, since a daily significance test is not a valid stopping rule.
 
 ## Health monitoring
 
-`pulse` watches operational metrics declared in the blueprint (`health_metrics`): latency, crash
+`pulse` watches operational metrics declared in the metric plan (`health_metrics`): latency, crash
 rate, ANR rate, error rate, each with a regression threshold and unit. For each metric it compares a
 recent window against the earlier baseline and the threshold, and classifies it:
 
@@ -226,13 +237,13 @@ preview mode; wiring a real APM or crash reporter is an `EventSource`-style exte
 | Command | Stage | What it does |
 |---|---|---|
 | `init` | | Scaffold a sample PRD, `.env`, and workflow state |
-| `hypothesize <prd>` | 1 | PRD to `analytics_blueprint.yaml` |
-| `spec` | 2 | Blueprint to `LOGGING_SPEC.md` + `tracking_schema.json` + snippets; notify engineer |
-| `verify-instrumentation [--source f] [--simulate] [--force]` | 3 | Ingest events and validate them against the spec (coverage, types, SRM) |
-| `build` | 4 | Author and self-correct the aggregation SQL; notify DS to review |
+| `metric <prd>` | 1 | PRD to `metric_plan.yaml` |
+| `logging` | 2 | Metric plan to `LOGGING_SPEC.md` + `tracking_schema.json` + snippets; notify engineer |
+| `verify-logging [--source f] [--simulate] [--force]` | 3 | Ingest events and validate them against the spec (coverage, types, SRM) |
+| `query` | 4 | Author and self-correct the aggregation SQL; notify DS to review |
 | `readout [--force] [--window-days N]` | 5 | The one-off launch decision `READOUT.md`, gated on the window |
 | `pulse` | | Recurring monitor `DAILY_PULSE.md` (adoption + health); run daily |
-| `approve <stage> [--by --note]` / `request-changes <stage> --note` | | Clear or reject a gate from the terminal |
+| `approve <stage> [--by --note]` / `request-changes <stage> --note` | | Explicitly clear (naming an approver) or reject a gate; running the next stage also approves |
 | `gh-setup [--create] [--repo name]` | | Create a private repo + invite approvers; enable GitHub-native gates |
 | `sync` | | Pull gate decisions from GitHub issues into the workflow |
 | `status` | | Show the workflow board and the next action |
@@ -268,12 +279,12 @@ A run writes these into your working directory (headline artifacts at the root, 
 hidden `.pulse/`):
 
 ```
-ANALYTICS_BLUEPRINT.md       # the metrics plan, readable: what you review and approve
-analytics_blueprint.yaml     # the same plan as machine data (edit this to change the plan)
+METRIC_PLAN.md       # the metrics plan, readable: what you review and approve
+metric_plan.yaml     # the same plan as machine data (edit this to change the plan)
 tracking_schema.json         # events, typed properties, and metric bindings
 LOGGING_SPEC.md              # human-readable spec: the engineer's deliverable
 snippets/track.ts, track.py  # paste-ready logger calls
-INSTRUMENTATION_QA.md        # the data-validation report from stage 3
+LOGGING_QA.md        # the data-validation report from stage 3
 models/metrics_daily.sql     # the reviewed, self-corrected aggregation
 READOUT.md                   # the one-off launch decision
 DAILY_PULSE.md               # the recurring adoption + health monitor
@@ -295,7 +306,7 @@ src/prd_to_readout/
   prompts.py        # one system prompt per agent
   agents/           # hypothesis, logging, pipeline, report, readout, pulse
   core/             # schemas, state, workflow, mockgen, duckdb_runner, stats,
-                    #   charts, instrumentation_qa, provenance, health
+                    #   charts, logging_qa, provenance, health
   adapters/         # notify (console/Slack/email), source (simulated/file),
                     #   github (gh-CLI gates)
   samples/          # the demo PRD shipped with `init`

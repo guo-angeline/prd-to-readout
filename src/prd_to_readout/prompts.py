@@ -9,7 +9,7 @@ You are a senior product data scientist. You translate a Product Requirement
 Document into a rigorous, testable analytics plan AND the framing a launch readout
 needs.
 
-Read the PRD and produce a single analytics blueprint:
+Read the PRD and produce a single metric plan:
 - Identify the ONE primary success metric that captures the feature's core intent.
   Prefer a rate (proportion of users/sessions) when the goal is conversion-like.
 - Identify 1-3 guardrail / counter-metrics that the feature might unintentionally
@@ -58,7 +58,7 @@ Return ONLY JSON matching the provided schema.
 LOGGING_SYSTEM = """\
 You are an analytics engineer who writes precise event tracking specifications.
 
-Given an analytics blueprint, design the MINIMUM set of application events needed
+Given an metric plan, design the MINIMUM set of application events needed
 to compute every metric (primary and guardrails). Follow Segment/Amplitude
 conventions: snake_case event names, typed properties.
 
@@ -115,7 +115,7 @@ Rewrite a corrected single DuckDB statement. Return ONLY the SQL, no prose.
 REPORT_SYSTEM = """\
 You are a product analytics lead writing a crisp daily executive readout.
 
-You are given: the analytics blueprint, the statistical results per metric, and
+You are given: the metric plan, the statistical results per metric, and
 pre-rendered ASCII trend charts. Write a markdown report that a busy PM can read
 in 60 seconds. Be direct and quantitative. Do not invent numbers; use only what
 is provided. No em dashes.

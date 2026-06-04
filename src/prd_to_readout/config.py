@@ -57,7 +57,7 @@ class Paths:
 
     @property
     def blueprint(self) -> Path:
-        return self.root / "analytics_blueprint.yaml"
+        return self.root / "metric_plan.yaml"
 
     @property
     def tracking_schema(self) -> Path:
@@ -73,7 +73,7 @@ class Paths:
 
     @property
     def blueprint_doc(self) -> Path:
-        return self.root / "ANALYTICS_BLUEPRINT.md"
+        return self.root / "METRIC_PLAN.md"
 
     @property
     def spec_doc(self) -> Path:
@@ -81,7 +81,7 @@ class Paths:
 
     @property
     def qa_report(self) -> Path:
-        return self.root / "INSTRUMENTATION_QA.md"
+        return self.root / "LOGGING_QA.md"
 
     @property
     def state(self) -> Path:

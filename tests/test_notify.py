@@ -3,7 +3,7 @@ from prd_to_readout.adapters import notify
 
 def test_console_notifier_always_succeeds(capsys):
     ok = notify.ConsoleNotifier().send(
-        notify.Notification("pipeline", "data scientist", "SQL ready", "review it", ["x.sql"])
+        notify.Notification("query", "data scientist", "SQL ready", "review it", ["x.sql"])
     )
     assert ok
     assert "data scientist" in capsys.readouterr().out
@@ -18,7 +18,7 @@ def test_slack_notifier_posts_payload(monkeypatch):
         return object()
 
     monkeypatch.setattr(notify.urllib.request, "urlopen", fake_urlopen)
-    n = notify.Notification("pipeline", "ds", "SQL ready", "review", ["models/metrics_daily.sql"])
+    n = notify.Notification("query", "ds", "SQL ready", "review", ["models/metrics_daily.sql"])
     ok = notify.SlackNotifier("https://hooks.slack.test/abc").send(n)
     assert ok
     assert captured["url"] == "https://hooks.slack.test/abc"
@@ -30,7 +30,7 @@ def test_slack_failure_does_not_raise(monkeypatch):
         raise OSError("network down")
 
     monkeypatch.setattr(notify.urllib.request, "urlopen", boom)
-    ok = notify.SlackNotifier("https://x").send(notify.Notification("pipeline", "ds", "t", "a"))
+    ok = notify.SlackNotifier("https://x").send(notify.Notification("query", "ds", "t", "a"))
     assert ok is False  # swallowed, workflow continues
 
 
@@ -43,8 +43,8 @@ def test_build_notifier_selects_channels():
 
 
 def test_gate_notification_routes_to_right_human():
-    eng = notify.gate_notification("instrumentation", ["LOGGING_SPEC.md"])
+    eng = notify.gate_notification("logging", ["LOGGING_SPEC.md"])
     assert eng.audience == "engineer"
-    assert "approve instrumentation" in eng.action
-    ds = notify.gate_notification("pipeline", ["metrics_daily.sql"])
+    assert "approve logging" in eng.action
+    ds = notify.gate_notification("query", ["metrics_daily.sql"])
     assert ds.audience == "data scientist"

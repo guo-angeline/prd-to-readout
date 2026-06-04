@@ -58,23 +58,23 @@ def test_full_gated_workflow(tmp_path, blueprint, tracking, monkeypatch):
         return res
 
     # Gate enforcement: cannot build before earlier stages are approved.
-    blocked = runner.invoke(app, ["build", *w])
+    blocked = runner.invoke(app, ["query", *w])
     assert blocked.exit_code == 1
 
-    ok("hypothesize", str(prd))
-    ok("approve", "hypothesis", "--by", "pm")
-    ok("spec")
-    ok("approve", "instrumentation", "--by", "eng")
-    ok("verify-instrumentation")
-    ok("approve", "instrumentation_qa", "--by", "ds")
-    ok("build")
-    ok("approve", "pipeline", "--by", "ds")
+    ok("metric", str(prd))
+    ok("approve", "metric", "--by", "pm")
+    ok("logging")
+    ok("approve", "logging", "--by", "eng")
+    ok("verify-logging")
+    ok("approve", "logging_qa", "--by", "ds")
+    ok("query")
+    ok("approve", "query", "--by", "ds")
     ok("pulse")                       # monitoring works after pipeline approved
     ok("readout", "--force")          # one-off decision; force past the 2-week window
 
     # Final state: everything cleared, readout terminal.
     state = WorkflowState.load(tmp_path / ".pulse" / "state.yaml")
-    assert state.stage("pipeline").status == "approved"
+    assert state.stage("query").status == "approved"
     assert state.stage("readout").status == "done"
     assert state.launch_date is not None
 

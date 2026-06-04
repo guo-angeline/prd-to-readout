@@ -17,7 +17,7 @@ def _ready_workspace(tmp_path, blueprint, tracking, *, launch_offset_days):
     from prd_to_readout.core.duckdb_runner import DuckDBRunner
 
     (tmp_path / ".pulse").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "analytics_blueprint.yaml").write_text(blueprint.to_yaml())
+    (tmp_path / "metric_plan.yaml").write_text(blueprint.to_yaml())
     (tmp_path / "tracking_schema.json").write_text(tracking.model_dump_json(indent=2))
 
     # Build the metrics table on disk so readout/pulse have data.
@@ -27,7 +27,7 @@ def _ready_workspace(tmp_path, blueprint, tracking, *, launch_offset_days):
     runner_db.close()
 
     state = WorkflowState.new(blueprint.feature_name)
-    for stage in ["hypothesis", "instrumentation", "instrumentation_qa", "pipeline"]:
+    for stage in ["metric", "logging", "logging_qa", "query"]:
         workflow.complete_stage(state, stage, [], auto_yes=True)
     state.launch_date = (date.today() - timedelta(days=launch_offset_days)).isoformat()
     state.save(tmp_path / ".pulse" / "state.yaml")

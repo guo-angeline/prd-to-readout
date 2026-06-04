@@ -113,8 +113,8 @@ def main() -> None:
     bp = AnalyticsBlueprint.model_validate(BLUEPRINT_JSON)
     tracking = TrackingSchema.model_validate(TRACKING_JSON)
 
-    (OUT / "analytics_blueprint.yaml").write_text(bp.to_yaml())
-    (OUT / "ANALYTICS_BLUEPRINT.md").write_text(hypothesis_agent.render_blueprint_doc(bp))
+    (OUT / "metric_plan.yaml").write_text(bp.to_yaml())
+    (OUT / "METRIC_PLAN.md").write_text(hypothesis_agent.render_blueprint_doc(bp))
     (OUT / "tracking_schema.json").write_text(json.dumps(TRACKING_JSON, indent=2))
     snip = OUT / "snippets"
     snip.mkdir(exist_ok=True)
