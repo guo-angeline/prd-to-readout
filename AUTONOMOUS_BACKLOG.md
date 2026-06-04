@@ -31,11 +31,6 @@ and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
 
 Build these increments in order, one per iteration, each test-gated:
 
-- [ ] R1.2 Add `WarehouseSource`: constructed with a row iterator / cursor + the
-      canonical column mapping, it maps rows to `raw_events` via the R1.1 helper.
-      No network: take an injected "fetch rows" callable so it is unit-testable
-      with a fake. Implements the `EventSource` protocol (`load`, `descriptor`).
-      Add tests (happy path, column mapping, missing column, props packing).
 - [ ] R1.3 Wire `source_from_config` to build a `WarehouseSource` for
       `kind == "warehouse"` (config carries the query + mapping + a driver name).
       Add a dispatch test. Keep simulated/file behavior unchanged.
@@ -71,6 +66,8 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.2: added `WarehouseSource` (driver-agnostic, injected `fetch` callable,
+  reuses `rows_to_events`). 3 fake-backed unit tests. (iteration 3)
 - R1.1: extracted `rows_to_events` shared helper in `adapters/source.py`;
   `FileSource` now uses it. 3 helper unit tests added. (iteration 2)
 - READOUT.md now has a "What Success Looks Like" section (quantitative + qualitative),

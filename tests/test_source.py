@@ -83,6 +83,45 @@ def test_rows_to_events_missing_required_column_raises():
         source.rows_to_events(["event_name", "user_id", "ts"], [("buy", "u1", "t")])
 
 
+def test_warehousesource_loads_via_fetch():
+    def fetch():
+        cols = ["event_name", "user_id", "arm", "ts", "amount"]
+        rows = [("buy", "u1", "treatment", "2026-01-01 10:00:00", 9.5),
+                ("buy", "u2", "control", "2026-01-01 11:00:00", 12.0)]
+        return cols, rows
+
+    runner = DuckDBRunner(":memory:")
+    src = source.WarehouseSource(fetch)
+    assert src.kind == "warehouse"
+    assert src.load(runner) == 2
+    val = runner.query("SELECT CAST(props->>'amount' AS DOUBLE) FROM raw_events WHERE user_id='u1'")
+    assert val[0][0] == 9.5
+    runner.close()
+
+
+def test_warehousesource_applies_column_mapping():
+    def fetch():
+        return ["event", "uid", "variant", "time"], [("buy", "u1", "treatment", "2026-01-01 10:00:00")]
+
+    runner = DuckDBRunner(":memory:")
+    mapping = {"event_name": "event", "user_id": "uid", "arm": "variant", "ts": "time"}
+    src = source.WarehouseSource(fetch, mapping=mapping, meta={"driver": "fake"})
+    assert src.load(runner) == 1
+    assert runner.query("SELECT arm FROM raw_events")[0][0] == "treatment"
+    assert src.descriptor() == {"kind": "warehouse", "mapping": mapping, "driver": "fake"}
+    runner.close()
+
+
+def test_warehousesource_missing_column_raises():
+    def fetch():
+        return ["event_name", "user_id", "ts"], [("buy", "u1", "2026-01-01 10:00:00")]
+
+    runner = DuckDBRunner(":memory:")
+    with pytest.raises(ValueError, match="arm"):
+        source.WarehouseSource(fetch).load(runner)
+    runner.close()
+
+
 def test_source_from_config_dispatch(blueprint, tracking, tmp_path):
     sim = source.source_from_config({"kind": "simulated"}, blueprint, tracking, default_seed=1, default_effect=0.1)
     assert isinstance(sim, source.SimulatedSource)

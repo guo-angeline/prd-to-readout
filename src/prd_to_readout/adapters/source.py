@@ -10,7 +10,7 @@ sources implement the same `EventSource` protocol.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
@@ -131,6 +131,38 @@ class FileSource:
 
     def descriptor(self) -> dict:
         return {"kind": self.kind, "path": str(self.path), "mapping": self.mapping}
+
+
+class WarehouseSource:
+    """Real events pulled from a warehouse query (BigQuery, Snowflake, ...).
+
+    Driver-agnostic: it takes a `fetch` callable that returns
+    ``(columns, rows)`` and maps those rows into `raw_events` through the shared
+    `rows_to_events` contract. Concrete drivers (see R1.4) just supply a `fetch`
+    that runs SQL; injecting it keeps this unit-testable with a fake, no network.
+    """
+
+    kind = "warehouse"
+
+    def __init__(
+        self,
+        fetch: Callable[[], tuple[Sequence[str], Iterable[Sequence[Any]]]],
+        *,
+        mapping: dict | None = None,
+        meta: dict | None = None,
+    ):
+        self.fetch = fetch
+        self.mapping = mapping or {}
+        self.meta = meta or {}
+
+    def load(self, runner: DuckDBRunner) -> int:
+        columns, rows = self.fetch()
+        events = rows_to_events(columns, rows, self.mapping)
+        runner.load_raw_events(events)
+        return len(events)
+
+    def descriptor(self) -> dict:
+        return {"kind": self.kind, "mapping": self.mapping, **self.meta}
 
 
 def source_from_config(
