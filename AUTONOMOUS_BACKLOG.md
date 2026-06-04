@@ -23,8 +23,6 @@ file, pick ONE item, ship it, and update the log. Keep this file on the
 
 ## Backlog (pick from the top; reorder freely)
 
-- [ ] Surface `success_qualitative` / `success_quantitative` in READOUT.md (the
-      blueprint now carries them; the launch readout should state the win state).
 - [ ] Add a model_validator to `AnalyticsBlueprint` rejecting duplicate metric
       names across primary/adoption/guardrails (collisions break bindings + SQL).
       Add a test.
@@ -44,6 +42,9 @@ file, pick ONE item, ship it, and update the log. Keep this file on the
 ## Done log
 
 (newest first)
+
+- READOUT.md now has a "What Success Looks Like" section (quantitative + qualitative),
+  rendered from the blueprint. Test added. (iteration 1)
 
 ## Parked (tried, reverted, why)
 

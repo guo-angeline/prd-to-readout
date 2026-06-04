@@ -26,6 +26,11 @@
 * **Core Experience:** A one-tap checkout button for returning users with a saved card, with a 5-second undo.
 * **Scope & Audience:** 50/50 A/B on iOS and Android, returning US customers with a saved payment method.
 
+### What Success Looks Like
+
+* **By the numbers:** A sustained lift in cart conversion for returning cohorts with no rise in cancellations.
+* **For users:** Returning users perceive checkout as instant and effortless for repeat purchases.
+
 ### Hypothesis
 
 * **If we:** give returning users a one-tap checkout that reuses their saved card and address

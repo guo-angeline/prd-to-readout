@@ -44,6 +44,19 @@ def test_readout_fills_template_sections(blueprint):
     assert "—" not in md  # house style
 
 
+def test_readout_shows_success_definition(blueprint):
+    bp = blueprint.model_copy(update={
+        "success_quantitative": "Conversion up 4 points, cancellations flat.",
+        "success_qualitative": "Checkout feels instant for repeat buyers.",
+    })
+    results = [_result("cart_conversion_rate", True, "increase", 0.16, 0.001)]
+    md = assemble_readout(bp, results, _ctx(), _SECTIONS,
+                          date_label="d", window_label="w", stakeholders="s")
+    assert "What Success Looks Like" in md
+    assert "Conversion up 4 points" in md
+    assert "Checkout feels instant" in md
+
+
 def test_readout_simulated_is_preview(blueprint):
     results = [_result("cart_conversion_rate", True, "increase", 0.16, 0.001)]
     md = assemble_readout(blueprint, results, _ctx(source_kind="simulated"), _SECTIONS,
