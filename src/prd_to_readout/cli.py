@@ -10,6 +10,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import json
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -151,6 +152,7 @@ def _finish_stage(cfg: Config, state: WorkflowState, stage: str, artifacts, *, y
     if status_now in ("awaiting_approval", "done"):
         build_notifier().send(gate_notification(stage, arts))
     if status_now == "awaiting_approval":
+        _ensure_gate_approver(cfg, state, stage)
         _open_gate_issue(cfg, state, stage)
     _save(state, cfg)
     return status_now
@@ -250,51 +252,68 @@ def _github_enable(state: WorkflowState, full: str, approvers: dict) -> None:
     state.github = {"repo": full, "approvers": approvers}
 
 
-def _maybe_auto_github(cfg: Config, state: WorkflowState, *, yes: bool = False) -> None:
-    """Auto-enable GitHub gates once the blueprint names approvers.
+def _declared_handle(cfg: Config, role: str) -> str:
+    """The approver handle for a role as named in the PRD/blueprint, or ''."""
+    if not cfg.paths.blueprint.exists():
+        return ""
+    try:
+        ap = _load_blueprint(cfg).approvers
+    except Exception:
+        return ""
+    return {"product": ap.product, "engineering": ap.engineering,
+            "data_science": ap.data_science}.get(role, "") or ""
 
-    Called right after the hypothesis stage, before its gate issue is opened, so
-    that gate (and every later one) lands in GitHub. No-op when GitHub is already
-    configured, when no approver handles are declared, or when running with --yes
-    (gates auto-clear locally, so issues would be pointless). If the PRD names
-    approvers but `gh` is missing or unauthenticated, it prints a hint instead of
-    failing the workflow.
+
+def _ensure_gate_approver(cfg: Config, state: WorkflowState, stage: str) -> None:
+    """Make sure this gate has a GitHub approver, asking for one if needed.
+
+    Called as a stage parks at its gate. The approver is taken from the PRD if it
+    names one; otherwise, in an interactive terminal, we ask for the handle as an
+    optional step (Enter skips and keeps the gate terminal-based). The first handle
+    given lazily creates the private repo; later stages just add their approver. A
+    no-op under non-interactive use (CI, `run --yes`, piped input) and when the
+    role is already configured.
     """
-    if state.github or not cfg.paths.blueprint.exists():
-        return
-    if yes:  # gates auto-approve locally; opening GitHub issues would be moot
-        return
-    from .adapters.github import GitHubClient, GitHubError
+    from .adapters.github import GATE_ROLE, GitHubClient, GitHubError
 
-    approvers = _resolve_approvers(_load_blueprint(cfg), state, interactive=False)
-    if not any(approvers.values()):
-        console.print(
-            "  [dim]Tip: add an '## Approvers' section to your PRD (GitHub handles), then "
-            "approvals route through GitHub automatically. Or run 'prd-to-readout gh-setup --create'.[/]"
-        )
+    role = GATE_ROLE.get(stage)
+    if not role:
         return
+    if state.github and (state.github.get("approvers") or {}).get(role):
+        return  # already configured for this role
+
+    handle = _declared_handle(cfg, role)
+    if not handle:
+        if not sys.stdin.isatty():
+            return  # non-interactive: leave it terminal-gated
+        try:
+            entered = typer.prompt(
+                f"GitHub handle for the {role} approver to gate '{stage}' (optional, Enter to skip)",
+                default="", show_default=False)
+        except (EOFError, typer.Abort):
+            return
+        handle = entered.strip().lstrip("@")
+        if not handle:
+            return
+
     try:
-        GitHubClient.whoami()
+        if state.github is None:
+            with _working(f"Creating a private GitHub repo for {state.feature}..."):
+                full = GitHubClient.create_private_repo(_slug(state.feature))
+            state.github = {"repo": full, "approvers": {}}
+            console.print(f"  [green]GitHub gates:[/] created private repo [cyan]{full}[/]")
+        client = GitHubClient(state.github["repo"])
+        if client.user_exists(handle):
+            client.add_collaborator(handle)
+            console.print(f"  invited [cyan]@{handle}[/] ({role})")
+        else:
+            console.print(f"  [yellow]warning: @{handle} not found on GitHub[/]")
+        state.github.setdefault("approvers", {})[role] = handle
+        _save(state, cfg)
     except GitHubError as e:
-        console.print(f"  [yellow]GitHub gates not enabled:[/] {e}")
-        console.print(
-            "  [dim]Your PRD names approvers. Run 'gh auth login', then "
-            "'prd-to-readout gh-setup --create' to route approvals through GitHub.[/]"
-        )
-        return
-    name = _slug(state.feature)
-    try:
-        with _working(f"Creating a private GitHub repo '{name}'..."):
-            full = GitHubClient.create_private_repo(name)
-    except GitHubError as e:
-        console.print(f"  [yellow]could not create GitHub repo '{name}':[/] {e}")
-        console.print(
-            "  [dim]Run 'prd-to-readout gh-setup --create --repo <name>' to enable GitHub gates.[/]"
-        )
-        return
-    console.print(f"  [green]GitHub gates:[/] created private repo [cyan]{full}[/]")
-    _github_enable(state, full, approvers)
-    _save(state, cfg)
+        console.print(f"  [yellow]GitHub gate not enabled:[/] {e}")
+        console.print("  [dim]Run 'gh auth login' (or 'prd-to-readout gh-setup --create') "
+                      "to route approvals through GitHub.[/]")
 
 
 def handle_errors(fn):
@@ -561,7 +580,6 @@ def metric(
     console.print(f"  primary metric: [cyan]{bp.primary_metric.name}[/]  "
                   f"guardrails: {', '.join(m.name for m in bp.guardrail_metrics) or 'none'}")
     console.print(f"  review → {cfg.paths.blueprint_doc}   (data: {cfg.paths.blueprint.name})")
-    _maybe_auto_github(cfg, state, yes=yes)
     _finish_stage(cfg, state, "metric", [cfg.paths.blueprint_doc, cfg.paths.blueprint], yes=yes)
     _hint(state)
 
@@ -918,7 +936,6 @@ def run(
         full = None
         if stage == "metric":
             state.feature = _do_metric(cfg, llm, prd_text).feature_name
-            _maybe_auto_github(cfg, state, yes=yes)
         elif stage == "logging":
             _do_logging(cfg, llm, _load_blueprint(cfg))
         elif stage == "logging_qa":

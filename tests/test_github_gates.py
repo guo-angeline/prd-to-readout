@@ -171,9 +171,13 @@ def test_resolve_approvers_prompts_for_missing(tmp_path, blueprint, monkeypatch)
 
 
 # --------------------------------------------------------------------------- #
-# auto-enable GitHub gates when the PRD declares approvers
+# per-stage approver: declared in the PRD, or asked for as an optional step
 # --------------------------------------------------------------------------- #
-def test_auto_github_creates_repo_when_approvers_declared(tmp_path, blueprint, monkeypatch):
+def _force_tty(monkeypatch, value: bool):
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: value)
+
+
+def test_gate_approver_uses_declared_handle(tmp_path, blueprint, monkeypatch):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
     blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
@@ -181,49 +185,86 @@ def test_auto_github_creates_repo_when_approvers_declared(tmp_path, blueprint, m
     state = WorkflowState.new("One-Tap Checkout")
 
     monkeypatch.setattr(github, "GitHubClient", FakeGH)
-    cli._maybe_auto_github(cfg, state)
+    _force_tty(monkeypatch, False)  # declared, so no prompt needed
+    cli._ensure_gate_approver(cfg, state, "metric")  # metric gate -> product
 
     assert state.github is not None
     assert state.github["repo"] == "owner/one-tap-checkout"
-    assert state.github["approvers"]["data_science"] == "carol"
+    assert state.github["approvers"]["product"] == "alice"
 
 
-def test_auto_github_noop_without_approvers(tmp_path, blueprint, monkeypatch):
+def test_gate_approver_noop_without_handle_noninteractive(tmp_path, blueprint, monkeypatch):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
     cfg.paths.blueprint.write_text(blueprint.to_yaml())  # default Approvers() are empty
     state = WorkflowState.new("feat")
 
     monkeypatch.setattr(github, "GitHubClient", FakeGH)
-    cli._maybe_auto_github(cfg, state)
+    _force_tty(monkeypatch, False)
+    cli._ensure_gate_approver(cfg, state, "metric")
 
-    assert state.github is None  # stays terminal-gated
+    assert state.github is None  # nothing declared, not a tty -> terminal-gated
 
 
-def test_auto_github_noop_with_yes(tmp_path, blueprint, monkeypatch):
+def test_gate_approver_prompts_when_interactive(tmp_path, blueprint, monkeypatch):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
-    blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())  # no declared handles
+    state = WorkflowState.new("feat")
+
+    monkeypatch.setattr(github, "GitHubClient", FakeGH)
+    _force_tty(monkeypatch, True)
+    monkeypatch.setattr(cli.typer, "prompt", lambda *a, **k: "bob")
+    cli._ensure_gate_approver(cfg, state, "logging")  # logging gate -> engineering
+
+    assert state.github is not None
+    assert state.github["approvers"]["engineering"] == "bob"
+
+
+def test_gate_approver_skips_on_empty_prompt(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
     cfg.paths.blueprint.write_text(blueprint.to_yaml())
     state = WorkflowState.new("feat")
 
     monkeypatch.setattr(github, "GitHubClient", FakeGH)
-    cli._maybe_auto_github(cfg, state, yes=True)
+    _force_tty(monkeypatch, True)
+    monkeypatch.setattr(cli.typer, "prompt", lambda *a, **k: "")  # user hits Enter
+    cli._ensure_gate_approver(cfg, state, "metric")
 
-    assert state.github is None  # --yes auto-clears gates locally; no GitHub issues
+    assert state.github is None  # opted out -> stays terminal
 
 
-def test_auto_github_hint_when_gh_unavailable(tmp_path, blueprint, monkeypatch):
+def test_gate_approver_already_configured_is_noop(tmp_path, blueprint, monkeypatch):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
-    blueprint.approvers = Approvers(product="alice", engineering="bob", data_science="carol")
+    cfg.paths.blueprint.write_text(blueprint.to_yaml())
+    state = WorkflowState.new("feat")
+    state.github = {"repo": "owner/repo", "approvers": {"product": "alice"}}
+
+    # If it tried to do anything it would touch GitHubClient; make that explode.
+    def boom(*a, **k):
+        raise AssertionError("should not touch GitHub when already configured")
+
+    monkeypatch.setattr(github, "GitHubClient", boom)
+    cli._ensure_gate_approver(cfg, state, "metric")  # product already set
+    assert state.github["approvers"]["product"] == "alice"
+
+
+def test_gate_approver_survives_gh_error(tmp_path, blueprint, monkeypatch):
+    cfg = Config.load(workdir=tmp_path)
+    cfg.paths.ensure()
+    blueprint.approvers = Approvers(product="alice", engineering="", data_science="")
     cfg.paths.blueprint.write_text(blueprint.to_yaml())
     state = WorkflowState.new("feat")
 
-    def boom():
-        raise github.GitHubError("gh not authed")
+    class FakeGHBoom(FakeGH):
+        @staticmethod
+        def create_private_repo(name):
+            raise github.GitHubError("gh not authed")
 
-    monkeypatch.setattr(github.GitHubClient, "whoami", staticmethod(boom))
-    cli._maybe_auto_github(cfg, state)  # must not raise
+    monkeypatch.setattr(github, "GitHubClient", FakeGHBoom)
+    _force_tty(monkeypatch, False)
+    cli._ensure_gate_approver(cfg, state, "metric")  # must not raise
 
     assert state.github is None

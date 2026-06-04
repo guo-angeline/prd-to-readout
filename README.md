@@ -148,30 +148,34 @@ See committed examples: [`READOUT.md`](examples/sample_run/READOUT.md) and
 ## GitHub-native gates
 
 Approvals can live in GitHub instead of the terminal, giving you a real audit trail and a familiar
-review surface. **Just name the approvers in the PRD.** When the metric stage extracts those
-handles, the tool automatically creates a private repo, invites them, and opens an Issue at each
-gate assigned to the right person, no extra command:
+review surface. You don't have to set anything up first: **as each stage parks at its gate, the tool
+asks for that approver's GitHub handle as an optional step.** Type a handle and it lazily creates a
+private repo (on the first one), invites the approver, and opens an Issue assigned to them; press
+Enter to skip and keep that gate terminal-based.
 
 ```bash
-# In the PRD, name the approvers (the metric step extracts these into the metric plan):
-#   ## Approvers
-#   - Product / metrics owner: @alice
-#   - Engineering (logging): @bob
-#   - Data Science (QA + SQL): @carol
-
-prd-to-readout run prd.md   # metric stage names approvers -> private repo + per-gate issues, automatically
-prd-to-readout sync         # pull decisions into the local workflow
+prd-to-readout metric prd.md   # at the gate: "GitHub handle for the product approver (optional)"
+prd-to-readout logging         # asks for the engineering approver, reuses the same repo
+# ... each later gate asks for its own approver, once
+prd-to-readout sync            # pull their decisions back into the local workflow
 ```
 
-This needs the `gh` CLI authenticated (`gh auth login`). If `gh` isn't ready, the run says so and
-stays terminal-gated. To enable GitHub explicitly, or to reuse an existing repo, run `gh-setup`:
+To skip the prompts, **name the approvers in the PRD** and they're used automatically (no asking):
+
+```markdown
+## Approvers
+- Product / metrics owner: @alice
+- Engineering (logging): @bob
+- Data Science (QA + SQL): @carol
+```
+
+This needs the `gh` CLI authenticated (`gh auth login`); if it isn't ready, the gate says so and
+stays terminal-based. Prompts only appear in an interactive terminal, so they never block `--yes`,
+piped, or CI runs. To set everything up in one shot, or reuse an existing repo, run `gh-setup`:
 
 ```bash
 prd-to-readout gh-setup --create --repo my-launch   # create a private repo + invite approvers
 ```
-
-Auto-setup is skipped under `--yes` (gates auto-clear locally, so issues would be moot) and when
-the PRD names no approvers.
 
 Roles map to gates: **product** clears the metric gate, **engineering** confirms the logging,
 **data science** reviews QA and the SQL.
