@@ -31,10 +31,6 @@ and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
 
 Build these increments in order, one per iteration, each test-gated:
 
-- [ ] R1.1 Extract the row -> canonical-event logic out of `FileSource.load`
-      (`_col`, props extraction, missing-column check) into a shared helper in
-      `adapters/source.py` so other sources reuse it. Pure refactor; existing
-      `test_source.py` must stay green. Add a focused unit test for the helper.
 - [ ] R1.2 Add `WarehouseSource`: constructed with a row iterator / cursor + the
       canonical column mapping, it maps rows to `raw_events` via the R1.1 helper.
       No network: take an injected "fetch rows" callable so it is unit-testable
@@ -75,6 +71,8 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.1: extracted `rows_to_events` shared helper in `adapters/source.py`;
+  `FileSource` now uses it. 3 helper unit tests added. (iteration 2)
 - READOUT.md now has a "What Success Looks Like" section (quantitative + qualitative),
   rendered from the blueprint. Test added. (iteration 1)
 
