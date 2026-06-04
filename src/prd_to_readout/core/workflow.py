@@ -11,7 +11,7 @@ from __future__ import annotations
 from .state import STAGE_ORDER, WorkflowState
 
 # Every stage except the terminal readout waits at a human gate by default.
-GATED_STAGES = {"hypothesis", "instrumentation", "instrumentation_qa", "pipeline"}
+GATED_STAGES = {"metric", "logging", "logging_qa", "query"}
 
 PASSED = {"approved", "done"}
 
@@ -150,9 +150,9 @@ def next_action(state: WorkflowState) -> str:
 
 def _stage_cmd(stage: str) -> str:
     return {
-        "hypothesis": "hypothesize <prd>",
-        "instrumentation": "spec",
-        "instrumentation_qa": "verify-instrumentation",
-        "pipeline": "build",
+        "metric": "metric <prd>",
+        "logging": "logging",
+        "logging_qa": "verify-logging",
+        "query": "query",
         "readout": "readout",
     }[stage]

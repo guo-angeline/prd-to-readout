@@ -22,5 +22,5 @@ and cancellations do not get meaningfully worse.
 
 ## Approvers
 - Product / metrics owner: @octocat
-- Engineering (instrumentation): @hubot
+- Engineering (logging): @hubot
 - Data Science (QA + SQL): @octocat

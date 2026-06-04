@@ -19,7 +19,7 @@ _PY_TYPES = {"string": "str", "number": "float", "boolean": "bool", "timestamp":
 def _user_prompt(bp: AnalyticsBlueprint) -> str:
     schema = json.dumps(TrackingSchema.model_json_schema())
     return (
-        f"Analytics blueprint:\n{bp.to_yaml()}\n\n"
+        f"Metric plan:\n{bp.to_yaml()}\n\n"
         f"Design the tracking schema and metric bindings as JSON matching:\n{schema}"
     )
 

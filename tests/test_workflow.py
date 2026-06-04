@@ -13,34 +13,34 @@ def test_new_state_all_pending():
 
 def test_gate_blocks_out_of_order():
     s = WorkflowState.new("feat")
-    workflow.ensure_can_run(s, "hypothesis")  # first stage always runnable
+    workflow.ensure_can_run(s, "metric")  # first stage always runnable
     with pytest.raises(GateError):
-        workflow.ensure_can_run(s, "instrumentation")
+        workflow.ensure_can_run(s, "logging")
 
 
 def test_complete_stage_parks_at_gate_then_approve_unblocks():
     s = WorkflowState.new("feat")
-    status = workflow.complete_stage(s, "hypothesis", ["analytics_blueprint.yaml"])
+    status = workflow.complete_stage(s, "metric", ["metric_plan.yaml"])
     assert status == "awaiting_approval"
     # Still blocked until a human approves.
     with pytest.raises(GateError):
-        workflow.ensure_can_run(s, "instrumentation")
-    workflow.approve(s, "hypothesis", by="alice", note="looks good")
-    assert s.stage("hypothesis").status == "approved"
-    assert s.stage("hypothesis").approver == "alice"
-    workflow.ensure_can_run(s, "instrumentation")  # no raise
+        workflow.ensure_can_run(s, "logging")
+    workflow.approve(s, "metric", by="alice", note="looks good")
+    assert s.stage("metric").status == "approved"
+    assert s.stage("metric").approver == "alice"
+    workflow.ensure_can_run(s, "logging")  # no raise
 
 
 def test_auto_yes_approves_immediately():
     s = WorkflowState.new("feat")
-    status = workflow.complete_stage(s, "hypothesis", [], auto_yes=True)
+    status = workflow.complete_stage(s, "metric", [], auto_yes=True)
     assert status == "approved"
-    workflow.ensure_can_run(s, "instrumentation")
+    workflow.ensure_can_run(s, "logging")
 
 
 def test_readout_is_terminal_not_gated():
     s = WorkflowState.new("feat")
-    for stage in ["hypothesis", "instrumentation", "instrumentation_qa", "pipeline"]:
+    for stage in ["metric", "logging", "logging_qa", "query"]:
         workflow.complete_stage(s, stage, [], auto_yes=True)
     status = workflow.complete_stage(s, "readout", ["DAILY_PULSE.md"])
     assert status == "done"
@@ -48,69 +48,69 @@ def test_readout_is_terminal_not_gated():
 
 def test_request_changes_blocks_next_stage():
     s = WorkflowState.new("feat")
-    workflow.complete_stage(s, "hypothesis", [], auto_yes=True)
-    workflow.request_changes(s, "hypothesis", by="bob", note="wrong primary metric")
-    assert s.stage("hypothesis").status == "changes_requested"
+    workflow.complete_stage(s, "metric", [], auto_yes=True)
+    workflow.request_changes(s, "metric", by="bob", note="wrong primary metric")
+    assert s.stage("metric").status == "changes_requested"
     with pytest.raises(GateError):
-        workflow.ensure_can_run(s, "instrumentation")
+        workflow.ensure_can_run(s, "logging")
 
 
 def test_state_roundtrip(tmp_path):
     s = WorkflowState.new("feat", prd_path="prd.md", prd_hash="abc123")
-    workflow.complete_stage(s, "hypothesis", ["bp.yaml"], auto_yes=True)
+    workflow.complete_stage(s, "metric", ["bp.yaml"], auto_yes=True)
     path = tmp_path / "state.yaml"
     s.save(path)
     loaded = WorkflowState.load(path)
     assert loaded.feature == "feat"
     assert loaded.prd_hash == "abc123"
-    assert loaded.stage("hypothesis").status == "approved"
-    assert loaded.stage("hypothesis").history  # history persisted
+    assert loaded.stage("metric").status == "approved"
+    assert loaded.stage("metric").history  # history persisted
 
 
 def test_next_action_points_to_first_runnable():
     s = WorkflowState.new("feat")
-    assert "hypothesize" in workflow.next_action(s)
-    workflow.complete_stage(s, "hypothesis", [])
+    assert "metric" in workflow.next_action(s)
+    workflow.complete_stage(s, "metric", [])
     # At a terminal gate the hint points at the next stage, which approves implicitly.
     hint = workflow.next_action(s)
-    assert "spec" in hint and "approve it" in hint
+    assert "logging" in hint and "approve it" in hint
 
 
 def test_advance_into_approves_parked_predecessor():
     s = WorkflowState.new("feat")
-    workflow.complete_stage(s, "hypothesis", [])  # parks at awaiting_approval
-    cleared = workflow.advance_into(s, "instrumentation")
-    assert cleared == "hypothesis"
-    assert s.stage("hypothesis").status == "approved"
-    workflow.ensure_can_run(s, "instrumentation")  # no longer blocked
+    workflow.complete_stage(s, "metric", [])  # parks at awaiting_approval
+    cleared = workflow.advance_into(s, "logging")
+    assert cleared == "metric"
+    assert s.stage("metric").status == "approved"
+    workflow.ensure_can_run(s, "logging")  # no longer blocked
 
 
 def test_advance_into_blocks_when_predecessor_never_ran():
     s = WorkflowState.new("feat")  # hypothesis still pending
     with pytest.raises(workflow.GateError):
-        workflow.advance_into(s, "instrumentation")
+        workflow.advance_into(s, "logging")
 
 
 def test_advance_into_blocks_on_changes_requested():
     s = WorkflowState.new("feat")
-    workflow.complete_stage(s, "hypothesis", [])
-    workflow.request_changes(s, "hypothesis", note="redo")
+    workflow.complete_stage(s, "metric", [])
+    workflow.request_changes(s, "metric", note="redo")
     with pytest.raises(workflow.GateError):
-        workflow.advance_into(s, "instrumentation")
+        workflow.advance_into(s, "logging")
 
 
 def test_advance_into_noop_when_already_approved():
     s = WorkflowState.new("feat")
-    workflow.complete_stage(s, "hypothesis", [], auto_yes=True)
-    assert workflow.advance_into(s, "instrumentation") is None
+    workflow.complete_stage(s, "metric", [], auto_yes=True)
+    assert workflow.advance_into(s, "logging") is None
 
 
 def test_advance_into_defers_to_github_gate():
     s = WorkflowState.new("feat")
-    workflow.complete_stage(s, "hypothesis", [])
+    workflow.complete_stage(s, "metric", [])
     s.github = {"repo": "owner/repo", "approvers": {"product": "alice"}}
-    s.stage("hypothesis").issue_number = 12
+    s.stage("metric").issue_number = 12
     with pytest.raises(workflow.GateError) as e:
-        workflow.advance_into(s, "instrumentation")
+        workflow.advance_into(s, "logging")
     assert "#12" in str(e.value) and "sync" in str(e.value)
-    assert s.stage("hypothesis").status == "awaiting_approval"  # not silently bypassed
+    assert s.stage("metric").status == "awaiting_approval"  # not silently bypassed

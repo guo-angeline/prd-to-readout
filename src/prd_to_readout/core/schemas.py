@@ -40,7 +40,7 @@ class Approvers(BaseModel):
     """GitHub handles of the humans who clear each gate (declared in the PRD).
 
     Roles map to gates: product clears the hypothesis, engineering confirms the
-    instrumentation, data_science reviews QA and the SQL.
+    logging, data_science reviews QA and the SQL.
     """
 
     product: str = Field("", description="GitHub handle, e.g. octocat (no @)")

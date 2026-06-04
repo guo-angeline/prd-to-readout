@@ -110,8 +110,8 @@ def test_finish_stage_opens_issue_when_github_configured(tmp_path, blueprint, mo
     fake = FakeGH()
     monkeypatch.setattr(cli, "_github_client", lambda s: fake)
 
-    cli._finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint])
-    assert state.stage("hypothesis").issue_number == 1
+    cli._finish_stage(cfg, state, "metric", [cfg.paths.blueprint])
+    assert state.stage("metric").issue_number == 1
     assert fake.created[0]["assignee"] == "alice"
 
 
@@ -119,8 +119,8 @@ def test_no_github_means_no_issue(tmp_path, blueprint):
     cfg = Config.load(workdir=tmp_path)
     cfg.paths.ensure()
     state = WorkflowState.new("feat")  # github is None
-    cli._finish_stage(cfg, state, "hypothesis", [cfg.paths.blueprint])
-    assert state.stage("hypothesis").issue_number is None
+    cli._finish_stage(cfg, state, "metric", [cfg.paths.blueprint])
+    assert state.stage("metric").issue_number is None
 
 
 def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
@@ -128,7 +128,7 @@ def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
     cfg.paths.ensure()
     state = WorkflowState.new("feat")
     state.github = {"repo": "owner/repo", "approvers": {"data_science": "carol"}}
-    st = state.stage("pipeline")
+    st = state.stage("query")
     st.status = "awaiting_approval"
     st.issue_number = 7
     state.save(cfg.paths.state)
@@ -140,8 +140,8 @@ def test_sync_approves_gate_from_issue(tmp_path, monkeypatch):
     res = runner.invoke(app, ["sync", "-w", str(tmp_path)])
     assert res.exit_code == 0, res.stdout
     reloaded = WorkflowState.load(cfg.paths.state)
-    assert reloaded.stage("pipeline").status == "approved"
-    assert reloaded.stage("pipeline").approver == "carol"
+    assert reloaded.stage("query").status == "approved"
+    assert reloaded.stage("query").approver == "carol"
     assert 7 in fake.closed
 
 

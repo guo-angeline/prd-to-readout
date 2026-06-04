@@ -1,4 +1,4 @@
-from prd_to_readout.core import instrumentation_qa, mockgen, stats
+from prd_to_readout.core import logging_qa, mockgen, stats
 from prd_to_readout.core.duckdb_runner import DuckDBRunner
 
 
@@ -22,7 +22,7 @@ def test_srm_check_skewed_fails():
 
 def test_qa_passes_on_clean_simulated_data(blueprint, tracking):
     runner = _runner(blueprint, tracking)
-    report = instrumentation_qa.run_qa(runner, blueprint, tracking)
+    report = logging_qa.run_qa(runner, blueprint, tracking)
     assert report.passed
     assert any("arriving" in c.name for c in report.checks)
     runner.close()
@@ -31,7 +31,7 @@ def test_qa_passes_on_clean_simulated_data(blueprint, tracking):
 def test_qa_flags_missing_event(blueprint, tracking):
     runner = _runner(blueprint, tracking)
     runner.execute("DELETE FROM raw_events WHERE event_name = 'order_cancelled'")
-    report = instrumentation_qa.run_qa(runner, blueprint, tracking)
+    report = logging_qa.run_qa(runner, blueprint, tracking)
     assert not report.passed
     missing = [c for c in report.checks if "order_cancelled" in c.name and not c.passed]
     assert missing
@@ -53,14 +53,14 @@ def test_unbound_declared_event_is_simulated_and_passes_qa(blueprint, tracking):
     present = {r[0] for r in runner.query("SELECT DISTINCT event_name FROM raw_events")}
     assert "session_started" in present
 
-    report = instrumentation_qa.run_qa(runner, blueprint, tracking)
+    report = logging_qa.run_qa(runner, blueprint, tracking)
     assert report.passed  # the unbound event arrives, so QA no longer fails
     runner.close()
 
 
 def test_qa_report_renders(blueprint, tracking):
     runner = _runner(blueprint, tracking)
-    report = instrumentation_qa.run_qa(runner, blueprint, tracking)
-    md = instrumentation_qa.render_qa_report(report, blueprint)
-    assert "Instrumentation QA" in md and "PASS" in md
+    report = logging_qa.run_qa(runner, blueprint, tracking)
+    md = logging_qa.render_qa_report(report, blueprint)
+    assert "Logging QA" in md and "PASS" in md
     runner.close()

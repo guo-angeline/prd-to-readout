@@ -81,7 +81,7 @@ def generate_events(
 
             # Emit every DECLARED event that has no metric binding (e.g. a
             # session/denominator event) once per user, so the simulated stream
-            # covers the whole spec and instrumentation QA can pass in preview.
+            # covers the whole spec and logging QA can pass in preview.
             for ev in schema.events:
                 if ev.name not in bound_event_names:
                     events.append(_make_event(ev.name, uid, arm, base_ts, ev, rng))

@@ -26,18 +26,18 @@ StageStatus = Literal[
 # The lifecycle, in order. Each stage may only start once the prior one is
 # approved/done. readout is the terminal output stage and is not gated.
 STAGE_ORDER: list[str] = [
-    "hypothesis",
-    "instrumentation",
-    "instrumentation_qa",
-    "pipeline",
+    "metric",
+    "logging",
+    "logging_qa",
+    "query",
     "readout",
 ]
 
 STAGE_TITLES = {
-    "hypothesis": "Hypothesis & metrics",
-    "instrumentation": "Instrumentation spec (engineer handoff)",
-    "instrumentation_qa": "Instrumentation QA (events verified)",
-    "pipeline": "Pipeline SQL (DS review)",
+    "metric": "Metric plan & hypotheses",
+    "logging": "Logging spec (engineer handoff)",
+    "logging_qa": "Logging QA (events verified)",
+    "query": "Query SQL (DS review)",
     "readout": "Launch readout (decision)",
 }
 

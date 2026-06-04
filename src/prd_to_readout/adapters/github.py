@@ -18,10 +18,10 @@ from dataclasses import dataclass, field
 
 # Which approver role clears each gate.
 GATE_ROLE = {
-    "hypothesis": "product",
-    "instrumentation": "engineering",
-    "instrumentation_qa": "data_science",
-    "pipeline": "data_science",
+    "metric": "product",
+    "logging": "engineering",
+    "logging_qa": "data_science",
+    "query": "data_science",
 }
 ROLES = ["product", "engineering", "data_science"]
 

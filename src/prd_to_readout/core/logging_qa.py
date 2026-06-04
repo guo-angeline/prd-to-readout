@@ -1,4 +1,4 @@
-"""Instrumentation QA: prove the logging is actually live and correct.
+"""Logging QA: prove the logging is actually live and correct.
 
 This is the step that's missing from a one-shot demo and the one a data scientist
 most needs before trusting any number. Once events exist in the source, it checks
@@ -86,7 +86,7 @@ def run_qa(runner: DuckDBRunner, bp: AnalyticsBlueprint, tracking: TrackingSchem
 def render_qa_report(report: QAReport, bp: AnalyticsBlueprint) -> str:
     status = "✅ PASS" if report.passed else "❌ FAIL"
     lines = [
-        f"# Instrumentation QA: {bp.feature_name}",
+        f"# Logging QA: {bp.feature_name}",
         "",
         f"## {status}",
         "",

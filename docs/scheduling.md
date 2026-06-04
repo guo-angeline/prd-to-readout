@@ -1,7 +1,7 @@
 # Scheduling the readout
 
 The `readout` stage is idempotent: it re-scores whatever is in the configured source and rewrites
-`DAILY_PULSE.md`. Once instrumentation is live and the pipeline is approved, schedule it so the
+`DAILY_PULSE.md`. Once logging is live and the pipeline is approved, schedule it so the
 readout stays current as real data accumulates.
 
 ## cron
