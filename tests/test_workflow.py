@@ -99,6 +99,19 @@ def test_advance_into_blocks_on_changes_requested():
         workflow.advance_into(s, "logging")
 
 
+def test_advance_into_overrides_soft_gate_changes_requested():
+    # logging_qa is a soft gate: a failed QA doesn't block the query stage.
+    s = WorkflowState.new("feat")
+    for stage in ("metric", "logging", "logging_qa"):
+        workflow.complete_stage(s, stage, [], auto_yes=True)
+    workflow.request_changes(s, "logging_qa", note="QA failed")
+    cleared = workflow.advance_into(s, "query")
+    assert cleared == "logging_qa"
+    assert s.stage("logging_qa").status == "approved"
+    assert "soft gate" in (s.stage("logging_qa").note or "")
+    workflow.ensure_can_run(s, "query")  # no longer blocked
+
+
 def test_advance_into_noop_when_already_approved():
     s = WorkflowState.new("feat")
     workflow.complete_stage(s, "metric", [], auto_yes=True)

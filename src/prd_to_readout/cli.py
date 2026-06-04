@@ -137,9 +137,17 @@ def _hint(state: WorkflowState) -> None:
 
 def _advance(cfg: Config, state: WorkflowState, stage: str) -> None:
     """Gate check that treats running ``stage`` as approval of the prior gate."""
+    prev = workflow.predecessor(stage)
+    overrode = prev is not None and state.stage(prev).status == "changes_requested"
     cleared = workflow.advance_into(state, stage)
     if cleared:
-        console.print(f"  [green]✓ approved[/] '{cleared}' [dim](by moving on to {stage})[/]")
+        if overrode:
+            console.print(
+                f"  [yellow]⚠ overrode '{cleared}'[/] "
+                f"[dim](changes were requested; proceeding to {stage} anyway)[/]"
+            )
+        else:
+            console.print(f"  [green]✓ approved[/] '{cleared}' [dim](by moving on to {stage})[/]")
         _save(state, cfg)
 
 

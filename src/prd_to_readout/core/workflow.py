@@ -13,6 +13,11 @@ from .state import STAGE_ORDER, WorkflowState
 # Every stage except the terminal readout waits at a human gate by default.
 GATED_STAGES = {"metric", "logging", "logging_qa", "query"}
 
+# Soft gates are advisory: if one has changes requested, the next stage may still
+# proceed. Advancing past it records the override in history rather than blocking.
+# logging_qa (verify-logging) is soft so a failed QA doesn't wall off the query stage.
+SOFT_GATES = {"logging_qa"}
+
 PASSED = {"approved", "done"}
 
 
@@ -36,11 +41,15 @@ def ensure_can_run(state: WorkflowState, stage: str) -> None:
     if prev is None:
         return
     status = state.stage(prev).status
-    if status not in PASSED:
-        raise GateError(
-            f"Cannot run '{stage}': '{prev}' is '{status}'. "
-            f"Approve it first with: prd-to-readout approve {prev}"
-        )
+    if status in PASSED:
+        return
+    # A soft gate with changes requested is advisory, not blocking.
+    if prev in SOFT_GATES and status == "changes_requested":
+        return
+    raise GateError(
+        f"Cannot run '{stage}': '{prev}' is '{status}'. "
+        f"Approve it first with: prd-to-readout approve {prev}"
+    )
 
 
 def advance_into(state: WorkflowState, stage: str) -> str | None:
@@ -53,7 +62,9 @@ def advance_into(state: WorkflowState, stage: str) -> str | None:
     ``stage``:
 
     - it never ran (``pending``): run it first;
-    - it needs rework (``changes_requested``): re-run it;
+    - it needs rework (``changes_requested``): re-run it, unless it is a soft gate
+      (see ``SOFT_GATES``), in which case advancing overrides it with a recorded
+      note instead of blocking;
     - it is a live GitHub gate (an open issue): that approval belongs in GitHub,
       so clear it there and ``sync`` rather than silently bypassing the audit trail.
     """
@@ -73,6 +84,10 @@ def advance_into(state: WorkflowState, stage: str) -> str | None:
                 note="approved implicitly by moving on to the next stage")
         return prev
     if st.status == "changes_requested":
+        if prev in SOFT_GATES:
+            approve(state, prev, by=f"advancing to {stage}",
+                    note="changes were requested; overridden by moving on (soft gate)")
+            return prev
         raise GateError(
             f"Cannot run '{stage}': '{prev}' has changes requested. "
             f"Re-run it first: prd-to-readout {_stage_cmd(prev)}"
