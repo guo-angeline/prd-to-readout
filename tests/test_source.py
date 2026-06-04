@@ -122,6 +122,36 @@ def test_warehousesource_missing_column_raises():
     runner.close()
 
 
+def test_source_from_config_builds_warehouse_via_registered_driver(blueprint, tracking):
+    def fake_factory(cfg):
+        assert cfg["query"] == "SELECT 1"
+        def fetch():
+            return ["event_name", "user_id", "arm", "ts"], [("buy", "u1", "control", "2026-01-01")]
+        return fetch
+
+    source.register_warehouse_driver("fake_wh", fake_factory)
+    try:
+        src = source.source_from_config(
+            {"kind": "warehouse", "driver": "fake_wh", "query": "SELECT 1"},
+            blueprint, tracking, default_seed=1, default_effect=0.1,
+        )
+        assert isinstance(src, source.WarehouseSource)
+        assert src.descriptor()["driver"] == "fake_wh"
+        runner = DuckDBRunner(":memory:")
+        assert src.load(runner) == 1
+        runner.close()
+    finally:
+        source._WAREHOUSE_DRIVERS.pop("fake_wh", None)
+
+
+def test_source_from_config_unknown_warehouse_driver_raises(blueprint, tracking):
+    with pytest.raises(ValueError, match="Unknown warehouse driver"):
+        source.source_from_config(
+            {"kind": "warehouse", "driver": "nope"},
+            blueprint, tracking, default_seed=1, default_effect=0.1,
+        )
+
+
 def test_source_from_config_dispatch(blueprint, tracking, tmp_path):
     sim = source.source_from_config({"kind": "simulated"}, blueprint, tracking, default_seed=1, default_effect=0.1)
     assert isinstance(sim, source.SimulatedSource)

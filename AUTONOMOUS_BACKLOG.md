@@ -31,9 +31,6 @@ and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
 
 Build these increments in order, one per iteration, each test-gated:
 
-- [ ] R1.3 Wire `source_from_config` to build a `WarehouseSource` for
-      `kind == "warehouse"` (config carries the query + mapping + a driver name).
-      Add a dispatch test. Keep simulated/file behavior unchanged.
 - [ ] R1.4 BigQuery driver behind an OPTIONAL import (`google-cloud-bigquery`):
       a thin function that runs the configured SQL and yields rows for
       `WarehouseSource`. Guard the import so the package still works without it;
@@ -66,6 +63,10 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.3: `source_from_config` now builds a `WarehouseSource` for
+  `kind=="warehouse"` via a pluggable driver registry
+  (`register_warehouse_driver`); unknown driver raises a clear error.
+  2 dispatch tests. (iteration 4)
 - R1.2: added `WarehouseSource` (driver-agnostic, injected `fetch` callable,
   reuses `rows_to_events`). 3 fake-backed unit tests. (iteration 3)
 - R1.1: extracted `rows_to_events` shared helper in `adapters/source.py`;

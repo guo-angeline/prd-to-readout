@@ -165,6 +165,21 @@ class WarehouseSource:
         return {"kind": self.kind, "mapping": self.mapping, **self.meta}
 
 
+# Warehouse driver registry: name -> factory(source_config) -> fetch callable.
+# Concrete drivers (e.g. BigQuery, R1.4) register here so `source_from_config`
+# can build a WarehouseSource without importing any driver dependency.
+_WAREHOUSE_DRIVERS: dict[str, Callable[[dict], Callable[[], tuple[Sequence[str], Iterable[Sequence[Any]]]]]] = {}
+
+
+def register_warehouse_driver(
+    name: str,
+    factory: Callable[[dict], Callable[[], tuple[Sequence[str], Iterable[Sequence[Any]]]]],
+) -> None:
+    """Register a warehouse driver: `factory(source_config)` returns a `fetch`
+    callable yielding `(columns, rows)`. Idempotent; last registration wins."""
+    _WAREHOUSE_DRIVERS[name] = factory
+
+
 def source_from_config(
     source: dict,
     blueprint: AnalyticsBlueprint,
@@ -183,4 +198,14 @@ def source_from_config(
         )
     if kind == "file":
         return FileSource(source["path"], source.get("mapping"))
+    if kind == "warehouse":
+        driver = source.get("driver", "")
+        factory = _WAREHOUSE_DRIVERS.get(driver)
+        if factory is None:
+            known = ", ".join(sorted(_WAREHOUSE_DRIVERS)) or "none registered"
+            raise ValueError(
+                f"Unknown warehouse driver {driver!r}. Registered drivers: {known}."
+            )
+        return WarehouseSource(factory(source), mapping=source.get("mapping"),
+                               meta={"driver": driver})
     raise ValueError(f"Unknown source kind: {kind!r}")
