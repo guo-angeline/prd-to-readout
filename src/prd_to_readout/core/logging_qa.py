@@ -29,14 +29,22 @@ class QAReport:
 
     @property
     def passed(self) -> bool:
+        """True if every critical check passed (non-critical checks only warn)."""
         return all(c.passed for c in self.checks if c.critical)
 
     @property
     def warnings(self) -> list[QACheck]:
+        """The failed-but-non-critical checks: worth a look, but they don't block."""
         return [c for c in self.checks if not c.passed and not c.critical]
 
 
 def run_qa(runner: DuckDBRunner, bp: AnalyticsBlueprint, tracking: TrackingSchema) -> QAReport:
+    """Run the logging-trust checks against ingested events and return a report.
+
+    Verifies that every declared event is arriving, required properties are
+    populated (>=99%, non-critical), both arms have users, and there is no
+    sample-ratio mismatch. The report's ``passed`` gates the pipeline.
+    """
     checks: list[QACheck] = []
     con = runner.con
 
@@ -84,6 +92,7 @@ def run_qa(runner: DuckDBRunner, bp: AnalyticsBlueprint, tracking: TrackingSchem
 
 
 def render_qa_report(report: QAReport, bp: AnalyticsBlueprint) -> str:
+    """Render the QA report as the human-readable `LOGGING_QA.md` markdown."""
     status = "✅ PASS" if report.passed else "❌ FAIL"
     lines = [
         f"# Logging QA: {bp.feature_name}",

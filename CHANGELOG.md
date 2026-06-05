@@ -33,7 +33,8 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 - README: new "The metric plan" section documenting baseline-to-target framing,
   adoption metrics, power analysis, and the causal (quasi-experimental) fallback.
-- Docstrings for the public surface of `core/stats.py` and `core/health.py`.
+- Docstrings for the public surface of `core/stats.py`, `core/health.py`, and
+  `core/logging_qa.py`.
 
 ### Tests
 

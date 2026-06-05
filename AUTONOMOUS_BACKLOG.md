@@ -34,14 +34,16 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 ### Hardening (now the active queue until a new theme is chosen)
 
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
-      One module per iteration. Done: `core/stats.py`, `core/health.py`. Remaining
-      high-value: `core/logging_qa.py`, `core/duckdb_runner.py`,
+      One module per iteration. Done: `core/stats.py`, `core/health.py`,
+      `core/logging_qa.py`. Remaining high-value: `core/duckdb_runner.py`,
       `core/provenance.py`, `agents/*` entry points (`generate_*`).
 
 ## Done log
 
 (newest first)
 
+- Hardening: docstrings for `core/logging_qa.py` public surface (`run_qa`,
+  `render_qa_report`, and `QAReport.passed`/`warnings`). Docs only. (iteration 18)
 - Hardening: docstrings for `core/health.py` public surface (`detect_regressions`,
   `overall_status`). Docs only, no behavior change. (iteration 17)
 - Hardening: docstrings for the public surface of `core/stats.py` (`evaluate_metric`,
