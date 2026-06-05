@@ -30,10 +30,12 @@ class RunContext:
 
     @property
     def is_simulated(self) -> bool:
+        """True if the run was driven by simulated data rather than a real source."""
         return self.source_kind == "simulated"
 
     @property
     def powered(self) -> bool:
+        """True if each arm met the required sample size (or none was computable)."""
         return self.required_n == 0 or min(self.n_control, self.n_treatment) >= self.required_n
 
     @property
@@ -52,6 +54,12 @@ def build_run_context(
     approvals: dict | None = None,
     alpha: float = stats.ALPHA,
 ) -> RunContext:
+    """Assemble the honesty layer from the run's source, results, and approvals.
+
+    Reads the primary metric's arm sizes and, for a rate primary, the sample size
+    its baseline + MDE require, so the readout can label itself and gate the
+    verdict on real, adequately powered data.
+    """
     primary = next((r for r in results if r.is_primary), results[0] if results else None)
     n_c = primary.n_control if primary else 0
     n_t = primary.n_treatment if primary else 0
