@@ -649,6 +649,9 @@ def verify_logging(
         None, "--warehouse-project", help="Project/account id passed to the warehouse driver."
     ),
     simulate: bool = typer.Option(False, "--simulate", help="Force the simulated preview source."),
+    adoption_effect: float = typer.Option(
+        0.0, "--adoption-effect", help="Simulated adoption-metric lift for the preview source (0 = flat)."
+    ),
     force: bool = typer.Option(False, "--force", help="Advance even if QA fails."),
     workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w"),
     yes: bool = typer.Option(False, "--yes", "-y"),
@@ -671,6 +674,8 @@ def verify_logging(
         state.source = {"kind": "file", "path": str(source)}
     elif simulate:
         state.source = {"kind": "simulated", "seed": cfg.seed, "effect": cfg.effect_size}
+        if adoption_effect:
+            state.source["adoption_effect"] = adoption_effect
 
     runner, n = _ingest_events(cfg, state, blueprint, tracking)
     console.print(f"  ingested [cyan]{n}[/] events from source '{state.source.get('kind')}'")
@@ -934,6 +939,9 @@ def run(
     model: str | None = typer.Option(None, "--model", "-m"),
     seed: int | None = typer.Option(None, "--seed"),
     effect: float = typer.Option(0.15, "--effect", help="Simulated lift (preview source)."),
+    adoption_effect: float = typer.Option(
+        0.0, "--adoption-effect", help="Simulated adoption-metric lift for the preview source (0 = flat)."
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Auto-approve every gate."),
     preview: bool = typer.Option(False, "--preview", help="Use the simulated source (no real data)."),
 ):
@@ -941,10 +949,13 @@ def run(
     cfg = _config(workdir, model, seed)
     _require_model(cfg)
     cfg.effect_size = effect
+    cfg.adoption_effect_size = adoption_effect
     cfg.paths.ensure()
     state = _state(cfg)
     if preview or not state.source:
         state.source = {"kind": "simulated", "seed": cfg.seed, "effect": effect}
+        if adoption_effect:
+            state.source["adoption_effect"] = adoption_effect
     llm = _llm(cfg)
 
     prd_text = prd.read_text()

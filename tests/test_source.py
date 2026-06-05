@@ -152,6 +152,18 @@ def test_source_from_config_unknown_warehouse_driver_raises(blueprint, tracking)
         )
 
 
+def test_source_from_config_honors_adoption_effect(blueprint, tracking):
+    # Absent -> flat (0.0); present -> carried onto the SimulatedSource + descriptor.
+    flat = source.source_from_config({"kind": "simulated"}, blueprint, tracking,
+                                     default_seed=1, default_effect=0.1)
+    assert flat.adoption_effect == 0.0
+    assert "adoption_effect" not in flat.descriptor()  # backward-compatible when flat
+    lifted = source.source_from_config({"kind": "simulated", "adoption_effect": 0.25},
+                                       blueprint, tracking, default_seed=1, default_effect=0.1)
+    assert lifted.adoption_effect == 0.25
+    assert lifted.descriptor()["adoption_effect"] == 0.25
+
+
 def test_source_from_config_dispatch(blueprint, tracking, tmp_path):
     sim = source.source_from_config({"kind": "simulated"}, blueprint, tracking, default_seed=1, default_effect=0.1)
     assert isinstance(sim, source.SimulatedSource)

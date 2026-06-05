@@ -299,7 +299,8 @@ preview mode; wiring a real APM or crash reporter is an `EventSource`-style exte
 | `version` | | Print the version |
 
 Common flags: `--workdir/-w` (where artifacts live, default the current directory), `--model/-m`
-(override `P2R_MODEL`), `--seed`, `--effect` (the planted lift for the simulated preview),
+(override `P2R_MODEL`), `--seed`, `--effect` (the planted primary-metric lift for the simulated
+preview), `--adoption-effect` (optional planted lift on adoption metrics, default flat),
 `--max-fix-attempts` (SQL self-correction budget), `--yes/-y` (auto-approve a gate).
 
 ## Configuration

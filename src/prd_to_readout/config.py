@@ -121,6 +121,9 @@ class Config:
     # Simulated lift baked into mock data, as a relative fraction on the primary
     # metric (0.15 = treatment is 15% better). Keeps the demo's significance real.
     effect_size: float = 0.15
+    # Optional simulated lift on adoption metrics (0.0 = flat, the default). Opt-in
+    # so previews can show adoption movement instead of a flat line.
+    adoption_effect_size: float = 0.0
 
     @property
     def paths(self) -> Paths:

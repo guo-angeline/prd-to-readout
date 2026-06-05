@@ -18,7 +18,8 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 - `metric` CLI warns when the planned `users_per_arm` is below the sample size
   needed to detect the target lift (shared `power_shortfall` helper).
 - Opt-in, seeded `adoption_effect` in `mockgen.generate_events` so simulated
-  previews can show adoption movement instead of a flat line.
+  previews can show adoption movement instead of a flat line, exposed as an
+  `--adoption-effect` flag on `run` and `verify-logging` (and `Config.adoption_effect_size`).
 - "What Success Looks Like" section in `READOUT.md`.
 - `error_rate` health metric in the committed example (alongside latency and
   crash rate).
