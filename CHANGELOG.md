@@ -24,6 +24,9 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 - `error_rate` health metric in the committed example (alongside latency and
   crash rate).
 
+- PEP 561 `py.typed` marker so the package ships its inline type hints to
+  downstream type checkers.
+
 ### Changed
 
 - `AnalyticsBlueprint` rejects duplicate metric names across primary, adoption,

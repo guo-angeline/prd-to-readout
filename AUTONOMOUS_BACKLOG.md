@@ -40,6 +40,8 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: added a PEP 561 `py.typed` marker so the package's type hints are
+  used by downstream type checkers. Verified it ships in the built wheel. (iteration 23)
 - Hardening: end-to-end tests for `stats.evaluate_metric` on `count` and `mean`
   metrics (per-user aggregation SQL + `numeric_mean` value_property), recovering a
   mockgen-planted lift. Previously only `rate` was covered. (iteration 22)
