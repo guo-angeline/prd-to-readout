@@ -107,4 +107,9 @@ class LLMClient:
                     f"{user}\n\nYour previous response failed validation:\n{last_err}\n"
                     "Return ONLY valid JSON matching the requested schema."
                 )
-        raise ValueError(f"LLM output failed schema validation after retries: {last_err}")
+        raise LLMError(
+            f"Model '{self.model}' kept returning output that did not match the expected "
+            f"schema after {max_retries + 1} tries. Last error: {last_err}\n"
+            "Try a more capable model (e.g. a Claude or GPT model via P2R_MODEL); small "
+            "local models often struggle to emit valid structured JSON."
+        )

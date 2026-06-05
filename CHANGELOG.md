@@ -49,6 +49,9 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Fixed
 
+- `LLMClient.complete_json` raises a clean `LLMError` (instead of a bare
+  `ValueError`) when a model keeps returning schema-invalid output, so the CLI
+  shows an actionable message rather than a traceback.
 - `MultiNotifier.send` now delivers to every configured channel even when one
   fails; previously `all(generator)` short-circuited and a failed channel (e.g.
   a Slack outage) suppressed the channels after it (e.g. email).

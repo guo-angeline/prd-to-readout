@@ -40,6 +40,9 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Bugfix: `complete_json` now raises `LLMError` (not a bare `ValueError`) when a
+  model keeps returning schema-invalid output, so the CLI prints a clean,
+  actionable message instead of a traceback. Test added. (iteration 33)
 - Feature: power-gating now covers mean and count primaries, not just rates.
   `_welch` exposes the control-arm std, new `required_sample_size_mean` sizes the
   sample, and `build_run_context` computes `required_n` for non-rate primaries so
