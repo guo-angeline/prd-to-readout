@@ -46,6 +46,13 @@ def simulate_health(health_metrics: list[HealthMetric], *, horizon_days: int, se
 
 def detect_regressions(series: dict[str, dict[str, list[float]]],
                        health_metrics: list[HealthMetric], *, recent: int = 3) -> list[HealthAlert]:
+    """Classify each health metric by comparing its recent window to baseline + threshold.
+
+    For the treatment arm: ``regression`` if the recent-window mean is over the
+    threshold, ``watch`` if it is trending up sharply (>30%) versus the earlier
+    baseline but still under threshold, else ``ok``. ``recent`` is the number of
+    trailing days that form the recent window.
+    """
     alerts: list[HealthAlert] = []
     for hm in health_metrics:
         s = series.get(hm.name)
@@ -67,6 +74,7 @@ def detect_regressions(series: dict[str, dict[str, list[float]]],
 
 
 def overall_status(alerts: list[HealthAlert]) -> Severity:
+    """Roll up alerts into the worst severity present (regression > watch > ok)."""
     if any(a.severity == "regression" for a in alerts):
         return "regression"
     if any(a.severity == "watch" for a in alerts):
