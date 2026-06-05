@@ -41,3 +41,5 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 - Coverage for `_power_lines` (baseline present/missing, under/over-powered) and
   `good_looks_like()` on rate, mean, and count metrics.
+- End-to-end recovery tests for `stats.evaluate_metric` on `count` and `mean`
+  metrics (per-user aggregation SQL, incl. the `numeric_mean` value_property).

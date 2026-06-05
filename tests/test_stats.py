@@ -2,6 +2,24 @@ import numpy as np
 
 from prd_to_readout.core import mockgen, stats
 from prd_to_readout.core.duckdb_runner import DuckDBRunner
+from prd_to_readout.core.schemas import (
+    AnalyticsBlueprint,
+    EventSpec,
+    Hypotheses,
+    Metric,
+    MetricBinding,
+    PropertySpec,
+    TrackingSchema,
+)
+
+
+def _single_primary(metric: Metric, binding: MetricBinding, event: EventSpec):
+    """A minimal blueprint+schema whose only metric is `metric`, bound to `event`."""
+    bp = AnalyticsBlueprint(
+        feature_name="X", summary="y", primary_metric=metric,
+        hypotheses=Hypotheses(null="n", alternative="a"),
+    )
+    return bp, TrackingSchema(events=[event], bindings=[binding])
 
 
 def test_two_proportion_matches_known_value():
@@ -59,3 +77,42 @@ def test_evaluate_recovers_significant_primary_lift(blueprint, tracking):
     guard = results["order_cancellation_rate"]
     assert not guard.significant  # flat guardrail
     runner.close()
+
+
+def test_evaluate_recovers_count_metric():
+    # A count primary: per-user event counts, planted lift via mockgen.
+    bp, tracking = _single_primary(
+        Metric(name="orders_per_user", description="d", type="count", formula="f"),
+        MetricBinding(metric_name="orders_per_user", event_name="order_completed",
+                      kind="event_count", base_value=2.0),
+        EventSpec(name="order_completed", description="Order paid."),
+    )
+    events = mockgen.generate_events(bp, tracking, seed=42, effect=0.5)
+    runner = DuckDBRunner(":memory:")
+    runner.load_raw_events(events)
+    r = stats.evaluate_metric(runner, bp, bp.primary_metric, tracking)
+    runner.close()
+    assert r.metric_type == "count"
+    assert r.control_value > 0           # ~2.0 mean events per user
+    assert r.treatment_value > r.control_value
+    assert r.significant and r.moved_favorably
+
+
+def test_evaluate_recovers_mean_metric():
+    # A mean primary reading a numeric event property via the binding.
+    bp, tracking = _single_primary(
+        Metric(name="avg_order_value", description="d", type="mean", formula="f", unit="USD"),
+        MetricBinding(metric_name="avg_order_value", event_name="order_completed",
+                      kind="numeric_mean", value_property="amount", base_value=50.0),
+        EventSpec(name="order_completed", description="Order paid.",
+                  properties=[PropertySpec(name="amount", type="number")]),
+    )
+    events = mockgen.generate_events(bp, tracking, seed=42, effect=0.4)
+    runner = DuckDBRunner(":memory:")
+    runner.load_raw_events(events)
+    r = stats.evaluate_metric(runner, bp, bp.primary_metric, tracking)
+    runner.close()
+    assert r.metric_type == "mean"
+    assert 30 < r.control_value < 70     # planted around 50
+    assert r.treatment_value > r.control_value
+    assert r.significant and r.moved_favorably

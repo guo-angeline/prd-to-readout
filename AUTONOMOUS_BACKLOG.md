@@ -33,14 +33,16 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-The docstring pass is complete. Backlog is dry: per operating rule 7, the next
-iteration reads the code/tests/docs, adds a new high-value low-risk item here,
-then implements it.
+Backlog is dry: per operating rule 7, the next iteration reads the code/tests/docs,
+adds a new high-value low-risk item here, then implements it.
 
 ## Done log
 
 (newest first)
 
+- Hardening: end-to-end tests for `stats.evaluate_metric` on `count` and `mean`
+  metrics (per-user aggregation SQL + `numeric_mean` value_property), recovering a
+  mockgen-planted lift. Previously only `rate` was covered. (iteration 22)
 - Hardening: docstrings for the `agents/*` entry points (`generate_tracking_schema`,
   `generate_pulse`, `generate_sections`, `assemble_readout`, `generate_readout`,
   `generate_report`). Completes the per-module docstring pass. Docs only. (iteration 21)
