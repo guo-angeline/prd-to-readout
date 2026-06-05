@@ -23,18 +23,14 @@ file, pick ONE item, ship it, and update the log. Keep this file on the
 
 ## Backlog (pick from the top; reorder freely)
 
-### R1 — Real-data warehouse source (TOP PRIORITY, build in order)
+### R1 — Real-data warehouse source ✅ COMPLETE (R1.1–R1.6, see Done log)
 
-Goal: let a launch decision run on a live warehouse query, not just a file or the
-simulated preview. The FILE path (`FileSource`, csv/parquet/json) already exists
-and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
+Shipped: shared `rows_to_events` contract, `WarehouseSource`, a pluggable driver
+registry, an optional BigQuery driver, CLI wiring (`--warehouse-query`), and a
+runnable no-external-services demo + docs. Next product theme is the user's call
+(R3 segmentation and R5 CUPED/sequential both build on this real-data path).
 
-Build these increments in order, one per iteration, each test-gated:
-
-- [ ] R1.6 Docs + a runnable example (a tiny in-memory/duckdb "warehouse" fake) so
-      `examples/` shows the warehouse path without external services.
-
-### Hardening (background, lower priority)
+### Hardening (now the active queue until a new theme is chosen)
 
 - [ ] Add a model_validator to `AnalyticsBlueprint` rejecting duplicate metric
       names across primary/adoption/guardrails (collisions break bindings + SQL).
@@ -56,6 +52,8 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.6: runnable `examples/warehouse_source_demo.py` (local DuckDB as a stand-in
+  warehouse, no external services) + README warehouse docs. R1 COMPLETE. (iteration 7)
 - R1.5: `verify-logging` gains `--warehouse-query` / `--warehouse-driver` /
   `--warehouse-project`, storing a warehouse source in state like `--source`
   does for files. CLI test via a registered fake driver. (iteration 6)

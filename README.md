@@ -200,9 +200,26 @@ The expected columns are `event_name, user_id, arm, ts`, plus either a `props` J
 columns that get packed into `props`. If your export uses different column names, pass a mapping.
 
 Once real events are flowing, the readout's verdict becomes real (subject to power), and `pulse`
-reports actual adoption. Warehouse sources (BigQuery, Snowflake, Postgres) and product-analytics
-sources (Segment, Amplitude) are documented extension points that implement the same `EventSource`
-interface in `adapters/source.py`.
+reports actual adoption.
+
+### Warehouse sources
+
+Pull events straight from a warehouse query instead of a file:
+
+```bash
+verify-logging --warehouse-query "SELECT event_name, user_id, arm, ts, props FROM analytics.events" \
+               --warehouse-driver bigquery --warehouse-project my-gcp-project
+```
+
+The query must return the canonical columns (`event_name, user_id, arm, ts`) plus any extras, which
+get packed into `props` (same contract as the file source). BigQuery ships as an optional driver:
+`pip install google-cloud-bigquery` and authenticate with the usual `GOOGLE_APPLICATION_CREDENTIALS`.
+
+Drivers are pluggable via `register_warehouse_driver(name, factory)` in `adapters/source.py`: a
+`factory(config)` returns a `fetch()` callable yielding `(columns, rows)`, and `WarehouseSource` maps
+those rows into the pipeline through the shared `rows_to_events` contract. New backends (Snowflake,
+Postgres, Segment, Amplitude) slot in the same way. See `examples/warehouse_source_demo.py` for a
+runnable end-to-end demo backed by a local DuckDB standing in for a warehouse (no external services).
 
 ## Statistical methodology
 
@@ -318,8 +335,9 @@ src/prd_to_readout/
 
 Three pluggable interfaces:
 
-- **`EventSource`** (`adapters/source.py`): where events come from. `SimulatedSource` and
-  `FileSource` ship; warehouse and product-analytics sources slot in here.
+- **`EventSource`** (`adapters/source.py`): where events come from. `SimulatedSource`, `FileSource`,
+  and a pluggable `WarehouseSource` (BigQuery driver included) ship; more warehouse / product-analytics
+  backends register via `register_warehouse_driver`.
 - **`Notifier`** (`adapters/notify.py`): how humans are pinged at a gate.
 - **GitHub gates** (`adapters/github.py`): the decision logic (`evaluate_issue`) is pure and unit
   tested; the `gh`-CLI calls are isolated.
