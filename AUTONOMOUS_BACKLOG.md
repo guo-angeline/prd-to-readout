@@ -31,10 +31,32 @@ registry, an optional BigQuery driver, CLI wiring (`--warehouse-query`), and a
 runnable no-external-services demo + docs. Next product theme is the user's call
 (R3 segmentation and R5 CUPED/sequential both build on this real-data path).
 
-### Hardening (now the active queue until a new theme is chosen)
+### Loop status (paused at iteration 37)
 
-Backlog is dry: per operating rule 7, the next iteration reads the code/tests/docs,
-adds a new high-value low-risk item here, then implements it.
+Small, low-risk hardening is exhausted. Iterations 9–36 shipped the real bug
+fixes, the mean/count power-gating feature, SQL-identifier validation, packaging
+fixes, an example-freshness guard, and comprehensive test/docs coverage; a scan
+of every module (stats, provenance, workflow, github, source, notify, llm, state,
+charts, schemas, cli) found no remaining defect or meaningful coverage gap that is
+both high-value and low-risk. `auto-improve` was merged to `main` (backlog
+excluded).
+
+The honest next move needs human direction, not another micro-commit. Two real
+paths, both larger than "one small improvement":
+
+1. Cut the 0.1.0 release: move CHANGELOG `[Unreleased]` to a dated `0.1.0`
+   section, tag, and publish. (On `main`, also drop the now-dangling
+   `AUTONOMOUS_BACKLOG.md` reference in CHANGELOG.md:8.)
+2. Pick a feature theme the real-data path was built for: R3 segmentation (split
+   readouts by platform / cohort) or R5 CUPED / sequential testing. Each is a
+   multi-iteration feature; seed it as staged sub-items here first.
+
+To resume the loop on real work, re-run `/loop` with a chosen direction (e.g.
+"/loop ... start R3 segmentation"). Until then, continuing would only add churn.
+
+### Hardening backlog (dry)
+
+(empty)
 
 ## Done log
 
