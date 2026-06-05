@@ -40,6 +40,8 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: subprocess smoke test for `examples/warehouse_source_demo.py` so the
+  README-referenced runnable demo can't rot silently. (iteration 35)
 - Hardening: unit tests for `cli._window_status`, the no-launch-date guard, the
   inclusive `days >= w` boundary, and window-override precedence. (iteration 34)
 - Bugfix: `complete_json` now raises `LLMError` (not a bare `ValueError`) when a
