@@ -80,8 +80,14 @@ def run_qa(runner: DuckDBRunner, bp: AnalyticsBlueprint, tracking: TrackingSchem
     )}
     exp = bp.experiment
     nc, nt = arm_counts.get(exp.control_arm, 0), arm_counts.get(exp.treatment_arm, 0)
-    checks.append(QACheck("both arms have users", nc > 0 and nt > 0,
-                          f"{exp.control_arm}={nc}, {exp.treatment_arm}={nt}"))
+    ok = nc > 0 and nt > 0
+    detail = f"{exp.control_arm}={nc}, {exp.treatment_arm}={nt}"
+    if not ok and arm_counts:
+        # The expected labels are missing: show what the data actually uses so a
+        # control/treatment vs A/B mismatch is obvious instead of a bare "0, 0".
+        found = ", ".join(f"{a}={c}" for a, c in sorted(arm_counts.items()))
+        detail += f" (arms present: {found})"
+    checks.append(QACheck("both arms have users", ok, detail))
 
     # 4. Sample-ratio-mismatch.
     srm = stats.srm_check(nc, nt, exp.treatment_split)

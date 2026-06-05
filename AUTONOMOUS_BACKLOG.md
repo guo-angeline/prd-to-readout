@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: the logging-QA "both arms have users" check now lists the arm labels
+  actually present when the expected control/treatment labels are missing, so a
+  real-file arm-naming mismatch is obvious instead of a bare "0, 0". Test added.
+  (iteration 27)
 - Hardening: single-sourced the package version. `pyproject.toml` now uses
   hatchling's dynamic version from `__init__.py`'s `__version__`, so the build,
   the CLI `version` command, and `__version__` can no longer drift. Wheel build

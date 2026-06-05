@@ -58,6 +58,19 @@ def test_unbound_declared_event_is_simulated_and_passes_qa(blueprint, tracking):
     runner.close()
 
 
+def test_qa_arm_mismatch_surfaces_present_labels(blueprint, tracking):
+    # Real file uses A/B instead of control/treatment: the check fails and the
+    # detail must name the arm labels actually present, not just "0, 0".
+    runner = _runner(blueprint, tracking)
+    runner.execute("UPDATE raw_events SET arm = CASE WHEN arm = 'control' THEN 'A' ELSE 'B' END")
+    report = logging_qa.run_qa(runner, blueprint, tracking)
+    arms_check = next(c for c in report.checks if c.name == "both arms have users")
+    assert not arms_check.passed
+    assert "arms present:" in arms_check.detail
+    assert "A=" in arms_check.detail and "B=" in arms_check.detail
+    runner.close()
+
+
 def test_qa_report_renders(blueprint, tracking):
     runner = _runner(blueprint, tracking)
     report = logging_qa.run_qa(runner, blueprint, tracking)
