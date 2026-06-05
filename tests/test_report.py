@@ -50,6 +50,14 @@ def test_recommend_iterate_below_mde(blueprint):
     assert verdict == "ITERATE"
 
 
+def test_recommend_iterate_when_primary_inconclusive(blueprint):
+    # Primary not significant at all: the terminal "keep collecting" ITERATE branch.
+    results = [_result("cart_conversion_rate", True, "increase", 0.002, 0.006, 0.5)]
+    verdict, reason = recommend(blueprint, results)
+    assert verdict == "ITERATE"
+    assert "conclusive" in reason.lower()
+
+
 def test_recommend_iterate_when_guardrail_harmed(blueprint):
     results = [
         _result("cart_conversion_rate", True, "increase", 0.05, 0.16, 0.001),

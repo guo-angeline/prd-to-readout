@@ -33,13 +33,19 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-Backlog is dry: per operating rule 7, the next iteration reads the code/tests/docs,
-adds a new high-value low-risk item here, then implements it.
+- [ ] Power-gating only works for rate primaries: `build_run_context` computes
+      `required_n` only when the primary metric is a rate, so a mean/count-primary
+      experiment has `required_n=0` and is treated as always-powered, earning a hard
+      verdict even when underpowered. Add a mean/count sample-size path (needs a
+      baseline std / effect-size assumption) or label such verdicts as not power-gated.
 
 ## Done log
 
 (newest first)
 
+- Hardening: test for the terminal "not yet conclusive" ITERATE branch of
+  `recommend()` (primary not significant). All five verdict branches now covered.
+  (iteration 31)
 - Hardening: test for the `pipeline_agent._verify` recovery branch, SQL that
   executes but yields a wrong-shaped `metrics_daily` is retried, not accepted.
   (iteration 30)

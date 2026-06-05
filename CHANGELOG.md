@@ -68,3 +68,5 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
   metrics (per-user aggregation SQL, incl. the `numeric_mean` value_property).
 - Test for the `pipeline_agent` self-correction `_verify` branch: SQL that runs
   but produces a wrong-shaped `metrics_daily` is retried rather than accepted.
+- Test for the terminal "not yet conclusive" ITERATE branch of `recommend()`,
+  completing coverage of all five verdict branches.
