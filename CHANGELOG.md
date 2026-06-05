@@ -29,6 +29,8 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Changed
 
+- `FileSource.load` checks file existence before the extension, so a mistyped
+  path reports "not found" rather than an unsupported-extension error.
 - `AnalyticsBlueprint` rejects duplicate metric names across primary, adoption,
   and guardrail metrics (a collision silently broke metric bindings and SQL).
 

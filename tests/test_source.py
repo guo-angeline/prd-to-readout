@@ -46,6 +46,21 @@ order_completed,u1,2026-01-01 10:00:00
     runner.close()
 
 
+def test_filesource_missing_file_raises(tmp_path):
+    runner = DuckDBRunner(":memory:")
+    with pytest.raises(FileNotFoundError, match="not found"):
+        source.FileSource(tmp_path / "nope.csv").load(runner)
+    runner.close()
+
+
+def test_filesource_unsupported_extension_raises(tmp_path):
+    bad = _write_csv(tmp_path / "events.txt", "event_name,user_id,arm,ts\nbuy,u1,control,2026-01-01")
+    runner = DuckDBRunner(":memory:")
+    with pytest.raises(ValueError, match="Unsupported"):
+        source.FileSource(bad).load(runner)
+    runner.close()
+
+
 def test_filesource_column_mapping(tmp_path):
     csv = _write_csv(tmp_path / "m.csv", """
 event,uid,variant,time,amount

@@ -125,11 +125,11 @@ class FileSource:
         self.mapping = mapping or {}
 
     def load(self, runner: DuckDBRunner) -> int:
+        if not self.path.exists():
+            raise FileNotFoundError(f"Events file not found: {self.path}")
         ext = self.path.suffix.lower()
         if ext not in _READERS:
             raise ValueError(f"Unsupported events file '{self.path.name}'. Use one of: {', '.join(_READERS)}")
-        if not self.path.exists():
-            raise FileNotFoundError(f"Events file not found: {self.path}")
 
         res = runner.con.execute(f"SELECT * FROM {_READERS[ext]}(?)", [str(self.path)])
         cols = [d[0] for d in res.description]

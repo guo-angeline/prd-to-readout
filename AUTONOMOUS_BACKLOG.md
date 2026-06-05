@@ -40,6 +40,9 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: `FileSource.load` checks file existence before the extension, so a
+  mistyped path reports "not found" rather than complaining about the suffix.
+  Added tests for the not-found and unsupported-extension branches. (iteration 24)
 - Hardening: added a PEP 561 `py.typed` marker so the package's type hints are
   used by downstream type checkers. Verified it ships in the built wheel. (iteration 23)
 - Hardening: end-to-end tests for `stats.evaluate_metric` on `count` and `mean`
