@@ -42,6 +42,9 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Fixed
 
+- `MultiNotifier.send` now delivers to every configured channel even when one
+  fails; previously `all(generator)` short-circuited and a failed channel (e.g.
+  a Slack outage) suppressed the channels after it (e.g. email).
 - `DuckDBRunner.load_raw_events` no longer crashes when `props` holds non-JSON
   values (datetime/Decimal from a real events file's extra columns); they now
   serialize to their string form.

@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Bugfix: `MultiNotifier.send` used `all(generator)`, which short-circuited and
+  skipped every channel after one that returned False (a Slack outage silently
+  dropped the email handoff). Now sends to all channels, then aggregates. Test added.
+  (iteration 28)
 - Hardening: the logging-QA "both arms have users" check now lists the arm labels
   actually present when the expected control/treatment labels are missing, so a
   real-file arm-naming mismatch is obvious instead of a bare "0, 0". Test added.

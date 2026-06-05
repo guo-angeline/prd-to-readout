@@ -108,7 +108,10 @@ class MultiNotifier:
         self.channels = channels
 
     def send(self, n: Notification) -> bool:
-        return all(c.send(n) for c in self.channels)
+        # Materialize first: all(generator) short-circuits, which would skip every
+        # channel after one that fails (a Slack outage must not drop the email).
+        results = [c.send(n) for c in self.channels]
+        return all(results)
 
 
 def build_notifier(env: dict | None = None) -> MultiNotifier:

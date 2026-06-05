@@ -34,6 +34,24 @@ def test_slack_failure_does_not_raise(monkeypatch):
     assert ok is False  # swallowed, workflow continues
 
 
+def test_multinotifier_calls_every_channel_even_after_failure():
+    # A failing channel must not suppress the ones after it (all() short-circuits).
+    calls = []
+
+    class Recording:
+        def __init__(self, name, ok):
+            self.name, self.ok = name, ok
+
+        def send(self, n):
+            calls.append(self.name)
+            return self.ok
+
+    m = notify.MultiNotifier([Recording("slack", False), Recording("email", True)])
+    overall = m.send(notify.Notification("query", "ds", "t", "a"))
+    assert calls == ["slack", "email"]   # email still called despite slack failing
+    assert overall is False              # but the aggregate reports the failure
+
+
 def test_build_notifier_selects_channels():
     assert len(notify.build_notifier({}).channels) == 1  # console only
     m = notify.build_notifier({"P2R_SLACK_WEBHOOK": "https://x"})
