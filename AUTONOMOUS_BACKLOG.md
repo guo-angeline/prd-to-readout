@@ -38,8 +38,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
       previews show adoption movement, not a flat line. Keep it seeded + opt-in.
 - [ ] Broaden example health coverage: add an `error_rate` (and/or `anr_rate`)
       health metric to `examples/_generate.py` and regenerate.
-- [ ] Unit tests for `_power_lines` (baseline present vs missing) and
-      `good_looks_like()` on mean/count metrics.
 - [ ] Add a `CHANGELOG.md` and keep a terse entry per autonomous change.
 - [ ] README: document the template-style metric plan (baseline->target,
       adoption metrics, power analysis, causal fallback).
@@ -49,6 +47,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: unit tests for `_power_lines` (no-baseline / underpowered / powered /
+  primary-rate fallback / bias-mitigation) and `good_looks_like()` on mean+count
+  metrics. Pure test coverage, no behavior change. (iteration 9)
 - Hardening: `AnalyticsBlueprint` now rejects duplicate metric names across
   primary/adoption/guardrails (model_validator); collisions would silently break
   bindings + SQL. Test added. (iteration 8)

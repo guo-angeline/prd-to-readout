@@ -45,6 +45,25 @@ def test_good_looks_like_phrasing():
     assert bare.good_looks_like() == "lower is better"
 
 
+def test_good_looks_like_mean_and_count():
+    from prd_to_readout.core.schemas import Metric
+
+    # mean: not a percentage; the unit is appended via :g formatting.
+    mean = Metric(name="m", description="d", type="mean", formula="f",
+                  baseline=120, target=90, unit="s")
+    assert mean.good_looks_like() == "120s -> 90s"
+    # count: no unit, integral values render without a trailing zero.
+    count = Metric(name="c", description="d", type="count", formula="f",
+                   baseline=2.0, target=3.0)
+    assert count.good_looks_like() == "2 -> 3"
+    # target only / baseline only branches keep the unit.
+    target_only = Metric(name="t", description="d", type="mean", formula="f",
+                         target=4.5, unit="min")
+    assert target_only.good_looks_like() == "reach 4.5min"
+    baseline_only = Metric(name="b", description="d", type="count", formula="f", baseline=3.0)
+    assert baseline_only.good_looks_like() == "move from 3 in the right direction"
+
+
 def test_rejects_bad_split():
     with pytest.raises(ValidationError):
         AnalyticsBlueprint.model_validate(
