@@ -38,6 +38,7 @@ BLUEPRINT_JSON = {
     "health_metrics": [
         {"name": "p95_checkout_latency_ms", "kind": "latency", "unit": "ms", "threshold": 250.0},
         {"name": "crash_rate", "kind": "crash_rate", "unit": "%", "threshold": 1.0},
+        {"name": "checkout_error_rate", "kind": "error_rate", "unit": "%", "threshold": 2.0},
     ],
     "primary_metric": {
         "name": "cart_conversion_rate",

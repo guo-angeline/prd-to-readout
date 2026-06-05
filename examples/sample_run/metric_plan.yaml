@@ -49,6 +49,10 @@ health_metrics:
   kind: crash_rate
   unit: '%'
   threshold: 1.0
+- name: checkout_error_rate
+  kind: error_rate
+  unit: '%'
+  threshold: 2.0
 approvers:
   product: octocat
   engineering: hubot

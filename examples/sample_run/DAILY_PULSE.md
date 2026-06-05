@@ -21,6 +21,7 @@ _As of 2026-01-15T00:00:00+00:00._
 |---|---|---|---|---|---|
 | `p95_checkout_latency_ms` | latency | 346ms | 250ms | 156ms | 🔴 regression |
 | `crash_rate` | crash_rate | 0.58% | 1.00% | 0.62% | 🟢 ok |
+| `checkout_error_rate` | error_rate | 1.20% | 2.00% | 1.16% | 🟢 ok |
 
 ### ⚠️ Active alerts
 

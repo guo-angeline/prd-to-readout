@@ -32,8 +32,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Broaden example health coverage: add an `error_rate` (and/or `anr_rate`)
-      health metric to `examples/_generate.py` and regenerate.
 - [ ] Add a `CHANGELOG.md` and keep a terse entry per autonomous change.
 - [ ] README: document the template-style metric plan (baseline->target,
       adoption metrics, power analysis, causal fallback).
@@ -45,6 +43,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: example now carries a `checkout_error_rate` health metric (kind
+  `error_rate`) alongside latency + crash, so the sample DAILY_PULSE / METRIC_PLAN
+  exercise the error-rate path. Regenerated artifacts. (iteration 12)
 - Hardening: `mockgen.generate_events` gains an opt-in, seeded `adoption_effect`
   to plant lift on adoption metrics (primary lift + flat guardrails unchanged);
   default 0.0 preserves the existing stream byte-for-byte. Plumbed through

@@ -53,6 +53,7 @@ _Informational. These confirm reach and depth but do not gate the ship decision.
 |---|---|---|
 | `p95_checkout_latency_ms` | latency | 250ms |
 | `crash_rate` | crash_rate | 1% |
+| `checkout_error_rate` | error_rate | 2% |
 
 ## How we will test it
 
