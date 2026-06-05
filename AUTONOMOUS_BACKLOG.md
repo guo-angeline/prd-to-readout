@@ -32,9 +32,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Add a model_validator to `AnalyticsBlueprint` rejecting duplicate metric
-      names across primary/adoption/guardrails (collisions break bindings + SQL).
-      Add a test.
 - [ ] `metric` CLI: warn when `experiment.users_per_arm` is below the required
       sample size for the MDE + baseline (reuse `required_sample_size_rate`).
 - [ ] Optional planted lift on adoption metrics in `mockgen` so simulated
@@ -52,6 +49,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: `AnalyticsBlueprint` now rejects duplicate metric names across
+  primary/adoption/guardrails (model_validator); collisions would silently break
+  bindings + SQL. Test added. (iteration 8)
 - R1.6: runnable `examples/warehouse_source_demo.py` (local DuckDB as a stand-in
   warehouse, no external services) + README warehouse docs. R1 COMPLETE. (iteration 7)
 - R1.5: `verify-logging` gains `--warehouse-query` / `--warehouse-driver` /

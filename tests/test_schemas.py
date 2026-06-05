@@ -28,6 +28,14 @@ def test_all_metrics_orders_primary_adoption_guardrails(blueprint):
     assert bp.role_of("order_cancellation_rate") == "guardrail"
 
 
+def test_rejects_duplicate_metric_names(blueprint):
+    data = blueprint.model_dump()
+    # An adoption metric reusing the primary's name should be rejected.
+    data["adoption_metrics"] = [blueprint.primary_metric.model_dump()]
+    with pytest.raises(ValidationError, match="unique"):
+        AnalyticsBlueprint.model_validate(data)
+
+
 def test_good_looks_like_phrasing():
     from prd_to_readout.core.schemas import Metric
 

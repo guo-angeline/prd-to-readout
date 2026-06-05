@@ -143,6 +143,19 @@ class AnalyticsBlueprint(BaseModel):
     def from_yaml(cls, text: str) -> AnalyticsBlueprint:
         return cls.model_validate(yaml.safe_load(text))
 
+    @model_validator(mode="after")
+    def _unique_metric_names(self) -> AnalyticsBlueprint:
+        """Names must be unique across primary/adoption/guardrails: a collision
+        silently breaks metric->event bindings and the generated SQL."""
+        names = [m.name for m in self.all_metrics()]
+        dupes = sorted({n for n in names if names.count(n) > 1})
+        if dupes:
+            raise ValueError(
+                "metric names must be unique across primary, adoption, and guardrail "
+                f"metrics; duplicated: {', '.join(dupes)}"
+            )
+        return self
+
     def all_metrics(self) -> list[Metric]:
         return [self.primary_metric, *self.adoption_metrics, *self.guardrail_metrics]
 
