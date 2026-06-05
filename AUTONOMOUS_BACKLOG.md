@@ -31,9 +31,6 @@ and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
 
 Build these increments in order, one per iteration, each test-gated:
 
-- [ ] R1.5 CLI: a way to point at a warehouse (e.g. `verify-logging --warehouse-query
-      <sql> --warehouse-driver bigquery`) that stores the warehouse source in state,
-      mirroring how `--source <file>` works today. Add a CLI test.
 - [ ] R1.6 Docs + a runnable example (a tiny in-memory/duckdb "warehouse" fake) so
       `examples/` shows the warehouse path without external services.
 
@@ -59,6 +56,9 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.5: `verify-logging` gains `--warehouse-query` / `--warehouse-driver` /
+  `--warehouse-project`, storing a warehouse source in state like `--source`
+  does for files. CLI test via a registered fake driver. (iteration 6)
 - R1.4: BigQuery driver (`adapters/warehouse_bigquery.py`) auto-registers the
   `bigquery` driver; `google-cloud-bigquery` is a lazy/optional import. Fake-client
   tests, no creds/network. (iteration 5)

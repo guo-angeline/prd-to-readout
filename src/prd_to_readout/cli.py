@@ -625,6 +625,15 @@ def verify_logging(
     source: Path | None = typer.Option(
         None, "--source", "-s", help="Real events file (csv/parquet/json/jsonl). Omit for the simulated preview."
     ),
+    warehouse_query: str | None = typer.Option(
+        None, "--warehouse-query", help="SQL pulling real events from a warehouse (use with --warehouse-driver)."
+    ),
+    warehouse_driver: str = typer.Option(
+        "bigquery", "--warehouse-driver", help="Driver for --warehouse-query (e.g. bigquery)."
+    ),
+    warehouse_project: str | None = typer.Option(
+        None, "--warehouse-project", help="Project/account id passed to the warehouse driver."
+    ),
     simulate: bool = typer.Option(False, "--simulate", help="Force the simulated preview source."),
     force: bool = typer.Option(False, "--force", help="Advance even if QA fails."),
     workdir: Path = typer.Option(Path.cwd(), "--workdir", "-w"),
@@ -639,7 +648,12 @@ def verify_logging(
     blueprint = _load_blueprint(cfg)
     tracking = _load_tracking(cfg)
 
-    if source is not None:
+    if warehouse_query is not None:
+        wh = {"kind": "warehouse", "driver": warehouse_driver, "query": warehouse_query}
+        if warehouse_project:
+            wh["project"] = warehouse_project
+        state.source = wh
+    elif source is not None:
         state.source = {"kind": "file", "path": str(source)}
     elif simulate:
         state.source = {"kind": "simulated", "seed": cfg.seed, "effect": cfg.effect_size}
