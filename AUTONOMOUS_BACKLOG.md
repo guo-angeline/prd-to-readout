@@ -13,7 +13,8 @@ file, pick ONE item, ship it, and update the log. Keep this file on the
    - `.venv/bin/python -m pytest tests/ -q`
    - `.venv/bin/ruff check src/ tests/`
    If a change touches generated docs, regenerate: `.venv/bin/python examples/_generate.py`.
-4. GREEN -> commit with a clear message + move the item to the Done log.
+4. GREEN -> commit with a clear message + move the item to the Done log + add a
+   terse entry under "Unreleased" in `CHANGELOG.md`.
    RED and not quickly fixable -> `git checkout -- .` to discard, note it under
    "Parked", move on. Never commit a red tree.
 5. Respect house style: no em dashes; punchy copy; warm/minimal for any UI.
@@ -32,7 +33,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Add a `CHANGELOG.md` and keep a terse entry per autonomous change.
 - [ ] README: document the template-style metric plan (baseline->target,
       adoption metrics, power analysis, causal fallback).
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
@@ -43,6 +43,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: added `CHANGELOG.md` (Keep a Changelog), seeded "Unreleased" from the
+  Done log. Operating rule 4 now requires a terse CHANGELOG entry per change.
+  (iteration 13)
 - Hardening: example now carries a `checkout_error_rate` health metric (kind
   `error_rate`) alongside latency + crash, so the sample DAILY_PULSE / METRIC_PLAN
   exercise the error-rate path. Regenerated artifacts. (iteration 12)
