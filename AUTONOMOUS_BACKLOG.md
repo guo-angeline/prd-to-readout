@@ -31,10 +31,6 @@ and is wired to `--source`; do NOT rebuild it. This adds the WAREHOUSE half.
 
 Build these increments in order, one per iteration, each test-gated:
 
-- [ ] R1.4 BigQuery driver behind an OPTIONAL import (`google-cloud-bigquery`):
-      a thin function that runs the configured SQL and yields rows for
-      `WarehouseSource`. Guard the import so the package still works without it;
-      unit-test with a fake client (no real creds/network). Document creds via env.
 - [ ] R1.5 CLI: a way to point at a warehouse (e.g. `verify-logging --warehouse-query
       <sql> --warehouse-driver bigquery`) that stores the warehouse source in state,
       mirroring how `--source <file>` works today. Add a CLI test.
@@ -63,6 +59,9 @@ Build these increments in order, one per iteration, each test-gated:
 
 (newest first)
 
+- R1.4: BigQuery driver (`adapters/warehouse_bigquery.py`) auto-registers the
+  `bigquery` driver; `google-cloud-bigquery` is a lazy/optional import. Fake-client
+  tests, no creds/network. (iteration 5)
 - R1.3: `source_from_config` now builds a `WarehouseSource` for
   `kind=="warehouse"` via a pluggable driver registry
   (`register_warehouse_driver`); unknown driver raises a clear error.

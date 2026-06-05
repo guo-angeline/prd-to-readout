@@ -209,3 +209,9 @@ def source_from_config(
         return WarehouseSource(factory(source), mapping=source.get("mapping"),
                                meta={"driver": driver})
     raise ValueError(f"Unknown source kind: {kind!r}")
+
+
+# Auto-register built-in warehouse drivers. Imported at the bottom so the registry
+# and register_warehouse_driver above already exist. The driver modules import
+# their heavy dependencies lazily, so this stays cheap and dependency-free.
+from . import warehouse_bigquery as _warehouse_bigquery  # noqa: E402,F401
