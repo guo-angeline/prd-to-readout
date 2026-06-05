@@ -53,17 +53,21 @@ class StatResult:
 
     @property
     def significant(self) -> bool:
+        """True if the (adjusted) p-value clears the significance threshold."""
         return self.effective_p < self.alpha
 
     @property
     def moved_favorably(self) -> bool:
+        """True if the observed change points in the metric's desired direction."""
         return self.abs_diff > 0 if self.direction == "increase" else self.abs_diff < 0
 
     @property
     def beats_mde(self) -> bool:
+        """True if the effect is significant and at least as large as the MDE."""
         return self.significant and abs(self.relative_lift) >= self.mde
 
     def as_dict(self) -> dict:
+        """Serialize the result plus the derived decision flags for templating."""
         d = self.__dict__.copy()
         d |= {
             "effective_p": self.effective_p,
@@ -172,6 +176,14 @@ def _binding(schema: TrackingSchema | None, metric: Metric):
 def evaluate_metric(
     runner: DuckDBRunner, bp: AnalyticsBlueprint, metric: Metric, schema: TrackingSchema | None
 ) -> StatResult:
+    """Recover one metric from the raw event stream and run its significance test.
+
+    Rates use a two-proportion z-test over distinct exposed/converting users;
+    means and counts aggregate per user, then use Welch's t-test. The metric's
+    binding (if any) names the event; otherwise it falls back to a sensible
+    default. Returns an unadjusted :class:`StatResult`; call :func:`apply_holm`
+    across the full set to set multiple-comparison-adjusted p-values.
+    """
     exp = bp.experiment
     b = _binding(schema, metric)
     ctrl, treat = exp.control_arm, exp.treatment_arm
@@ -225,4 +237,5 @@ def evaluate_metric(
 def evaluate_all(
     runner: DuckDBRunner, bp: AnalyticsBlueprint, schema: TrackingSchema | None = None
 ) -> list[StatResult]:
+    """Evaluate every blueprint metric (primary, adoption, guardrails) in order."""
     return [evaluate_metric(runner, bp, m, schema) for m in bp.all_metrics()]

@@ -34,11 +34,17 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 ### Hardening (now the active queue until a new theme is chosen)
 
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
+      One module per iteration. Done: `core/stats.py`. Remaining high-value:
+      `core/health.py`, `core/logging_qa.py`, `core/duckdb_runner.py`,
+      `core/provenance.py`, `agents/*` entry points (`generate_*`).
 
 ## Done log
 
 (newest first)
 
+- Hardening: docstrings for the public surface of `core/stats.py` (`evaluate_metric`,
+  `evaluate_all`, and the `StatResult` decision flags `significant`/`moved_favorably`/
+  `beats_mde`/`as_dict`). Docs only, no behavior change. (iteration 16)
 - Hardening: `--adoption-effect` flag on `run` and `verify-logging` (and
   `Config.adoption_effect_size`) exposes the iteration-11 mockgen adoption lift;
   stored in the simulated source dict only when non-zero. Test added. (iteration 15)
