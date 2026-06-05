@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: schema now validates SQL-interpolated names (metric/event names,
+  value properties) as safe snake_case identifiers, so a malformed or injection-y
+  name is rejected at the boundary instead of breaking the generated SQL. Test
+  added. (iteration 29)
 - Bugfix: `MultiNotifier.send` used `all(generator)`, which short-circuited and
   skipped every channel after one that returned False (a Slack outage silently
   dropped the email handoff). Now sends to all channels, then aggregates. Test added.

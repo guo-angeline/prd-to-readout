@@ -79,6 +79,23 @@ def test_rejects_bad_split():
         )
 
 
+def test_rejects_sql_unsafe_identifiers():
+    from prd_to_readout.core.schemas import EventSpec, Metric, MetricBinding, PropertySpec
+
+    # These names get interpolated into SQL, so non-identifier names must be rejected.
+    with pytest.raises(ValidationError, match="identifier"):
+        Metric(name="bad-name", description="d", type="rate", formula="f")
+    with pytest.raises(ValidationError, match="identifier"):
+        EventSpec(name="order'; DROP TABLE x", description="d")
+    with pytest.raises(ValidationError, match="identifier"):
+        PropertySpec(name="2leading_digit", type="number")
+    with pytest.raises(ValidationError, match="identifier"):
+        MetricBinding(metric_name="m", event_name="has space", kind="event_count", base_value=1.0)
+    with pytest.raises(ValidationError, match="identifier"):
+        MetricBinding(metric_name="m", event_name="ev", kind="numeric_mean",
+                      value_property="a-b", base_value=1.0)
+
+
 def test_numeric_mean_binding_requires_value_property():
     with pytest.raises(ValidationError):
         MetricBinding(

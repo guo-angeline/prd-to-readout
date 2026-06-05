@@ -8,14 +8,28 @@ agree on what the raw events mean), and everything downstream reads them back.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 MetricType = Literal["rate", "mean", "count"]
 Direction = Literal["increase", "decrease"]
 PropertyType = Literal["string", "number", "boolean", "timestamp"]
+
+# Names that get interpolated into SQL (event names, metric names, value properties)
+# must be plain identifiers, so a malformed/injected name can't break or inject SQL.
+_IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_ident(v: str) -> str:
+    if not _IDENT.fullmatch(v):
+        raise ValueError(
+            f"{v!r} is not a valid identifier: use snake_case (letters, digits, "
+            "underscores; not starting with a digit). These names are used in SQL."
+        )
+    return v
 
 
 class Metric(BaseModel):
@@ -29,6 +43,8 @@ class Metric(BaseModel):
     # Same units as the metric (rate = proportion 0-1). Leave None if the PRD has no number.
     baseline: float | None = Field(None, description="current/control value, before the change")
     target: float | None = Field(None, description="the value that counts as a 'good' outcome")
+
+    _check_name = field_validator("name")(_safe_ident)
 
     def good_looks_like(self) -> str:
         """Human phrasing of baseline -> target, or the direction if no numbers."""
@@ -174,11 +190,15 @@ class PropertySpec(BaseModel):
     required: bool = True
     description: str = ""
 
+    _check_name = field_validator("name")(_safe_ident)
+
 
 class EventSpec(BaseModel):
     name: str = Field(..., description="snake_case event name, e.g. checkout_completed")
     description: str
     properties: list[PropertySpec] = Field(default_factory=list)
+
+    _check_name = field_validator("name")(_safe_ident)
 
 
 class MetricBinding(BaseModel):
@@ -198,6 +218,13 @@ class MetricBinding(BaseModel):
     base_value: float = Field(
         ..., description="control-arm baseline: probability (rate), mean count, or mean value"
     )
+
+    _check_event = field_validator("event_name")(_safe_ident)
+
+    @field_validator("value_property")
+    @classmethod
+    def _check_value_property(cls, v: str | None) -> str | None:
+        return _safe_ident(v) if v is not None else v
 
     @model_validator(mode="after")
     def _require_value_property(self) -> MetricBinding:

@@ -29,6 +29,9 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Changed
 
+- Schema validates SQL-interpolated names (metric/event names, value properties)
+  as safe snake_case identifiers, rejecting malformed or injection-y names at the
+  boundary instead of letting them reach the generated SQL.
 - Logging-QA "both arms have users" now lists the arm labels actually present
   when the expected control/treatment labels are missing, so a real-file
   arm-naming mismatch is obvious rather than a bare "0, 0".
