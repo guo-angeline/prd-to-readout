@@ -33,8 +33,11 @@ class DuckDBRunner:
     def load_raw_events(self, events: list[dict[str, Any]]) -> None:
         """(Re)create the raw_events table and bulk-insert the event dicts."""
         self.con.execute(RAW_DDL)
+        # default=str so non-JSON props (datetime/Decimal from a real events file's
+        # extra columns) serialize to their string form instead of crashing.
         rows = [
-            (e["event_name"], e["user_id"], e["arm"], e["ts"], json.dumps(e.get("props", {})))
+            (e["event_name"], e["user_id"], e["arm"], e["ts"],
+             json.dumps(e.get("props", {}), default=str))
             for e in events
         ]
         self.con.executemany(

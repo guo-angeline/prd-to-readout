@@ -34,6 +34,12 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 - `AnalyticsBlueprint` rejects duplicate metric names across primary, adoption,
   and guardrail metrics (a collision silently broke metric bindings and SQL).
 
+### Fixed
+
+- `DuckDBRunner.load_raw_events` no longer crashes when `props` holds non-JSON
+  values (datetime/Decimal from a real events file's extra columns); they now
+  serialize to their string form.
+
 ### Docs
 
 - README: new "The metric plan" section documenting baseline-to-target framing,

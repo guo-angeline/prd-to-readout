@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Bugfix: `DuckDBRunner.load_raw_events` crashed (`TypeError`) when `props` held a
+  datetime/Decimal, which happens when a real events file packs a timestamp/decimal
+  extra column into props. Now serializes via `json.dumps(default=str)`. Test added.
+  (iteration 25)
 - Hardening: `FileSource.load` checks file existence before the extension, so a
   mistyped path reports "not found" rather than complaining about the suffix.
   Added tests for the not-found and unsupported-extension branches. (iteration 24)
