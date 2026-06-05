@@ -35,13 +35,15 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
       One module per iteration. Done: `core/stats.py`, `core/health.py`,
-      `core/logging_qa.py`. Remaining high-value: `core/duckdb_runner.py`,
+      `core/logging_qa.py`, `core/duckdb_runner.py`. Remaining high-value:
       `core/provenance.py`, `agents/*` entry points (`generate_*`).
 
 ## Done log
 
 (newest first)
 
+- Hardening: docstrings for `core/duckdb_runner.py` public methods (`load_raw_events`,
+  `execute`, `query`, `query_dicts`, `table_exists`, `close`). Docs only. (iteration 19)
 - Hardening: docstrings for `core/logging_qa.py` public surface (`run_qa`,
   `render_qa_report`, and `QAReport.passed`/`warnings`). Docs only. (iteration 18)
 - Hardening: docstrings for `core/health.py` public surface (`detect_regressions`,

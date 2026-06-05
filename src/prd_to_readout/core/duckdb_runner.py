@@ -31,6 +31,7 @@ class DuckDBRunner:
         self.con = duckdb.connect(str(path))
 
     def load_raw_events(self, events: list[dict[str, Any]]) -> None:
+        """(Re)create the raw_events table and bulk-insert the event dicts."""
         self.con.execute(RAW_DDL)
         rows = [
             (e["event_name"], e["user_id"], e["arm"], e["ts"], json.dumps(e.get("props", {})))
@@ -49,21 +50,26 @@ class DuckDBRunner:
             return f"{type(e).__name__}: {e}"
 
     def execute(self, sql: str) -> None:
+        """Run a statement, raising on error (use try_execute to capture it instead)."""
         self.con.execute(sql)
 
     def query(self, sql: str) -> list[tuple]:
+        """Run a query and return all rows as tuples."""
         return self.con.execute(sql).fetchall()
 
     def query_dicts(self, sql: str) -> list[dict[str, Any]]:
+        """Run a query and return all rows as column-keyed dicts."""
         cur = self.con.execute(sql)
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     def table_exists(self, name: str) -> bool:
+        """True if a table with the given name exists in the database."""
         rows = self.con.execute(
             "SELECT count(*) FROM information_schema.tables WHERE table_name = ?", [name]
         ).fetchall()
         return bool(rows and rows[0][0])
 
     def close(self) -> None:
+        """Close the underlying DuckDB connection."""
         self.con.close()
