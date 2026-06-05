@@ -32,6 +32,8 @@ BLUEPRINT_JSON = {
     "strategic_alignment": "Supports the Q2 goal of improving checkout funnel efficiency.",
     "whats_shipped": "A one-tap checkout button for returning users with a saved card, with a 5-second undo.",
     "scope_audience": "50/50 A/B on iOS and Android, returning US customers with a saved payment method.",
+    "success_qualitative": "Returning users perceive checkout as instant and effortless for repeat purchases.",
+    "success_quantitative": "A sustained lift in cart conversion for returning cohorts with no rise in cancellations.",
     "approvers": {"product": "octocat", "engineering": "hubot", "data_science": "octocat"},
     "health_metrics": [
         {"name": "p95_checkout_latency_ms", "kind": "latency", "unit": "ms", "threshold": 250.0},
@@ -44,7 +46,20 @@ BLUEPRINT_JSON = {
         "formula": "distinct users who complete an order / distinct exposed users",
         "direction": "increase",
         "unit": "proportion",
+        "baseline": 0.32,
+        "target": 0.36,
     },
+    "adoption_metrics": [
+        {
+            "name": "one_tap_take_rate",
+            "description": "Share of exposed users who check out via the one-tap button at least once.",
+            "type": "rate",
+            "formula": "distinct users who use one-tap / distinct exposed users",
+            "direction": "increase",
+            "unit": "proportion",
+            "target": 0.40,
+        }
+    ],
     "guardrail_metrics": [
         {
             "name": "order_cancellation_rate",
@@ -53,6 +68,8 @@ BLUEPRINT_JSON = {
             "formula": "distinct users who cancel / distinct exposed users",
             "direction": "decrease",
             "unit": "proportion",
+            "baseline": 0.04,
+            "target": 0.04,
         }
     ],
     "hypotheses": {
@@ -69,6 +86,8 @@ BLUEPRINT_JSON = {
         "horizon_days": 14,
         "users_per_arm": 3000,
         "mde": 0.05,
+        "baseline_conversion": 0.32,
+        "bias_mitigation": "Fixed-horizon (no peeking) plus automated SRM checks on arm sizes.",
     },
 }
 
@@ -85,10 +104,17 @@ TRACKING_JSON = {
             "description": "Fired when a user cancels within the 5-second undo window.",
             "properties": [],
         },
+        {
+            "name": "one_tap_used",
+            "description": "Fired when a user completes checkout via the one-tap button.",
+            "properties": [],
+        },
     ],
     "bindings": [
         {"metric_name": "cart_conversion_rate", "event_name": "order_completed",
          "kind": "unique_user_conversion", "base_value": 0.32},
+        {"metric_name": "one_tap_take_rate", "event_name": "one_tap_used",
+         "kind": "unique_user_conversion", "base_value": 0.40},
         {"metric_name": "order_cancellation_rate", "event_name": "order_cancelled",
          "kind": "unique_user_conversion", "base_value": 0.04},
     ],

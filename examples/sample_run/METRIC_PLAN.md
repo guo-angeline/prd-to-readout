@@ -4,6 +4,13 @@
 
 _This is the plan we will measure against. If anything looks off, edit_ `metric_plan.yaml` _(the machine-readable file next to this one) and re-run_ `prd-to-readout metric`.
 
+## What we are building
+
+- **What's shipped:** A one-tap checkout button for returning users with a saved card, with a 5-second undo.
+- **Who sees it:** 50/50 A/B on iOS and Android, returning US customers with a saved payment method.
+- **Why it matters:** 35% of returning users drop off at the payment step, re-entering details we already have.
+- **Strategic fit:** Supports the Q2 goal of improving checkout funnel efficiency.
+
 ## The bet
 
 - **If we** give returning users a one-tap checkout that reuses their saved card and address
@@ -11,19 +18,34 @@ _This is the plan we will measure against. If anything looks off, edit_ `metric_
 - **Because** we remove redundant friction for users who have already shared payment details
 - **We can detect** a 5% relative change at 80% power.
 
+## What success looks like
+
+- **By the numbers:** A sustained lift in cart conversion for returning cohorts with no rise in cancellations.
+- **For users:** Returning users perceive checkout as instant and effortless for repeat purchases.
+
 ## Primary metric (the one that decides ship or not)
 
 **cart_conversion_rate** (rate, higher is better)
 
 Share of exposed carts that convert to a completed order.
 
+_What good looks like:_ 32.0% -> 36.0%
+
 _How it is computed:_ distinct users who complete an order / distinct exposed users
+
+## Adoption & engagement (is the feature being used?)
+
+_Informational. These confirm reach and depth but do not gate the ship decision._
+
+| Metric | Type | Target | Definition |
+|---|---|---|---|
+| `one_tap_take_rate` | rate | reach 40.0% | Share of exposed users who check out via the one-tap button at least once. |
 
 ## Guardrails (must not get worse)
 
 | Metric | Type | What good looks like | Definition |
 |---|---|---|---|
-| `order_cancellation_rate` | rate | lower is better | Share of exposed users who cancel an order within the undo window. |
+| `order_cancellation_rate` | rate | 4.0% -> 4.0% | Share of exposed users who cancel an order within the undo window. |
 
 ## Health to watch after launch
 
@@ -36,6 +58,10 @@ _How it is computed:_ distinct users who complete an order / distinct exposed us
 
 - control vs treatment, 50% in treatment
 - About 3,000 users per group, over 14 days
+- **Minimum detectable effect:** 5% relative lift, 80% power, two-tailed at α=0.05.
+- **Baseline conversion:** 32.0%.
+- **Required sample size:** ~13,512 users per arm to detect that lift (current plan may be underpowered).
+- **Bias & variance control:** Fixed-horizon (no peeking) plus automated SRM checks on arm sizes.
 
 ## Approvers
 

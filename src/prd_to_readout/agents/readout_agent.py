@@ -43,10 +43,10 @@ def _primary_secondary_table(results: list[StatResult]) -> str:
     for r in results:
         if r.is_primary:
             mtype = "Success / North Star"
-        elif r.direction == "increase":
-            mtype = "Engagement / Upstream"
+        elif r.role == "adoption":
+            mtype = "Adoption / Engagement"
         else:
-            continue  # decrease-direction metrics are counter-metrics; they go in the guardrail table
+            continue  # guardrails / counter-metrics go in the guardrail table
         rows.append(
             f"| **{r.metric_name}** | {mtype} | {_arrow(r.direction)} | "
             f"**{r.relative_lift * 100:+.1f}%** | *{r.effective_p:.3f}* | **{_yn(r)}** |"
@@ -61,7 +61,7 @@ def _guardrail_table(bp: AnalyticsBlueprint, results: list[StatResult]) -> str:
     )
     rows = []
     for r in results:
-        if r.is_primary or r.direction == "increase":
+        if r.role != "guardrail":
             continue
         if r.significant and not r.moved_favorably:
             action = f"ALERT: regressed (p={r.effective_p:.3f}); investigate before/after ship."
@@ -78,7 +78,7 @@ def _guardrail_table(bp: AnalyticsBlueprint, results: list[StatResult]) -> str:
 def _key_results(results: list[StatResult]) -> list[str]:
     out = []
     for r in results:
-        if r.is_primary or r.direction == "increase":
+        if r.is_primary or r.role == "adoption":
             sig = "Statistically Significant" if r.significant else "Not Significant"
             out.append(f"  * **{r.metric_name}**: **{r.relative_lift * 100:+.1f}%** ({sig})")
     return out
@@ -145,6 +145,10 @@ def assemble_readout(bp: AnalyticsBlueprint, results: list[StatResult], ctx: Run
         f"* **Core Experience:** {bp.whats_shipped or bp.summary}",
         f"* **Scope & Audience:** {bp.scope_audience or f'{bp.experiment.treatment_split:.0%} treatment split'}",
         "",
+        *(["### What Success Looks Like", "",
+           f"* **By the numbers:** {bp.success_quantitative or 'n/a'}",
+           f"* **For users:** {bp.success_qualitative or 'n/a'}",
+           ""] if (bp.success_quantitative or bp.success_qualitative) else []),
         "### Hypothesis",
         "",
         f"* **If we:** {bp.hypotheses.if_we or bp.summary}",

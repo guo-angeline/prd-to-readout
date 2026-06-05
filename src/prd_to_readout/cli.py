@@ -586,6 +586,7 @@ def metric(
     bp = _do_metric(cfg, _llm(cfg), prd_text)
     state.feature = bp.feature_name
     console.print(f"  primary metric: [cyan]{bp.primary_metric.name}[/]  "
+                  f"adoption: {', '.join(m.name for m in bp.adoption_metrics) or 'none'}  "
                   f"guardrails: {', '.join(m.name for m in bp.guardrail_metrics) or 'none'}")
     console.print(f"  review → {cfg.paths.blueprint_doc}   (data: {cfg.paths.blueprint.name})")
     _finish_stage(cfg, state, "metric", [cfg.paths.blueprint_doc, cfg.paths.blueprint], yes=yes)

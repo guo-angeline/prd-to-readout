@@ -16,6 +16,11 @@
       "name": "order_cancelled",
       "description": "Fired when a user cancels within the 5-second undo window.",
       "properties": []
+    },
+    {
+      "name": "one_tap_used",
+      "description": "Fired when a user completes checkout via the one-tap button.",
+      "properties": []
     }
   ],
   "bindings": [
@@ -24,6 +29,12 @@
       "event_name": "order_completed",
       "kind": "unique_user_conversion",
       "base_value": 0.32
+    },
+    {
+      "metric_name": "one_tap_take_rate",
+      "event_name": "one_tap_used",
+      "kind": "unique_user_conversion",
+      "base_value": 0.4
     },
     {
       "metric_name": "order_cancellation_rate",

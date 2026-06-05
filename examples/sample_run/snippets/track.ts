@@ -9,3 +9,8 @@ export function trackOrderCompleted(userId: string, arm: string, props: { amount
 export function trackOrderCancelled(userId: string, arm: string, props: {}) {
   analytics.track('order_cancelled', { user_id: userId, arm, ...props });
 }
+
+// Fired when a user completes checkout via the one-tap button.
+export function trackOneTapUsed(userId: string, arm: string, props: {}) {
+  analytics.track('one_tap_used', { user_id: userId, arm, ...props });
+}
