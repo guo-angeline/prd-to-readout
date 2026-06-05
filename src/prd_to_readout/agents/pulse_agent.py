@@ -88,6 +88,12 @@ def _regression_callouts(alerts: list[HealthAlert]) -> list[str]:
 
 def generate_pulse(bp: AnalyticsBlueprint, results: list[StatResult], alerts: list[HealthAlert],
                    charts: str, ctx: RunContext | None, *, generated_at: str) -> str:
+    """Render `DAILY_PULSE.md`: the deterministic adoption + health monitor.
+
+    No LLM call, so it is safe to schedule. The status badge is the worst of the
+    health signals and adoption; simulated runs are banner-labeled and it makes
+    no ship decision (that lives in the readout).
+    """
     badge, label = _status(alerts, results)
     callouts = _regression_callouts(alerts)
     banner = []

@@ -25,6 +25,7 @@ def _user_prompt(bp: AnalyticsBlueprint) -> str:
 
 
 def generate_tracking_schema(bp: AnalyticsBlueprint, llm: LLMClient) -> TrackingSchema:
+    """Derive the events, typed properties, and metric bindings from a blueprint."""
     return llm.complete_json(LOGGING_SYSTEM, _user_prompt(bp), TrackingSchema)
 
 

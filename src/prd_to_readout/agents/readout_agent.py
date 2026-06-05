@@ -98,6 +98,11 @@ def _banner(ctx: RunContext | None) -> list[str]:
 
 def generate_sections(bp: AnalyticsBlueprint, results: list[StatResult],
                       ctx: RunContext | None, llm: LLMClient) -> ReadoutSections:
+    """Ask the model for the narrative sections, pinned to the computed verdict.
+
+    The verdict and stats are computed deterministically and handed to the model
+    so it writes the prose around them rather than deciding the outcome itself.
+    """
     verdict, reason = recommend(bp, results, ctx)
     user = (
         f"Feature: {bp.feature_name}\nIntent: {bp.summary}\n"
@@ -111,6 +116,11 @@ def generate_sections(bp: AnalyticsBlueprint, results: list[StatResult],
 def assemble_readout(bp: AnalyticsBlueprint, results: list[StatResult], ctx: RunContext | None,
                      sections: ReadoutSections, *, date_label: str, window_label: str,
                      stakeholders: str) -> str:
+    """Stitch the narrative sections + computed tables into the `READOUT.md` template.
+
+    Deterministic: given the sections and stats it always produces the same
+    markdown, including the metric tables, the verdict, and the methodology line.
+    """
     verdict, _ = recommend(bp, results, ctx)
     mde_pct = f"{bp.experiment.mde:.0%}"
     methodology = ""
@@ -186,6 +196,7 @@ def assemble_readout(bp: AnalyticsBlueprint, results: list[StatResult], ctx: Run
 def generate_readout(bp: AnalyticsBlueprint, results: list[StatResult], ctx: RunContext | None,
                      llm: LLMClient, *, date_label: str, window_label: str,
                      stakeholders: str) -> str:
+    """End-to-end readout: generate the narrative sections, then assemble the doc."""
     sections = generate_sections(bp, results, ctx, llm)
     return assemble_readout(bp, results, ctx, sections, date_label=date_label,
                             window_label=window_label, stakeholders=stakeholders)

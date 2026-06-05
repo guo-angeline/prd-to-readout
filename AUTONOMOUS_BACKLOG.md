@@ -33,15 +33,17 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
-      One module per iteration. Done: `core/stats.py`, `core/health.py`,
-      `core/logging_qa.py`, `core/duckdb_runner.py`, `core/provenance.py`.
-      Remaining high-value: `agents/*` entry points (`generate_*`).
+The docstring pass is complete. Backlog is dry: per operating rule 7, the next
+iteration reads the code/tests/docs, adds a new high-value low-risk item here,
+then implements it.
 
 ## Done log
 
 (newest first)
 
+- Hardening: docstrings for the `agents/*` entry points (`generate_tracking_schema`,
+  `generate_pulse`, `generate_sections`, `assemble_readout`, `generate_readout`,
+  `generate_report`). Completes the per-module docstring pass. Docs only. (iteration 21)
 - Hardening: docstrings for `core/provenance.py` public surface (`build_run_context`,
   `RunContext.is_simulated`/`powered`). Docs only. (iteration 20)
 - Hardening: docstrings for `core/duckdb_runner.py` public methods (`load_raw_events`,

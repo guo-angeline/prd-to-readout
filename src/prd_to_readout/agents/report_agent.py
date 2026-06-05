@@ -67,6 +67,11 @@ def generate_report(
     bp: AnalyticsBlueprint, results: list[StatResult], charts: str, llm: LLMClient,
     ctx: RunContext | None = None,
 ) -> str:
+    """Write the narrative analysis prose, pinned to the computed verdict.
+
+    Simulated or underpowered runs add a framing instruction so the model keeps
+    the writeup preview-only rather than claiming a confident result.
+    """
     verdict, reason = recommend(bp, results, ctx)
     framing = ""
     if ctx is not None and ctx.is_simulated:
