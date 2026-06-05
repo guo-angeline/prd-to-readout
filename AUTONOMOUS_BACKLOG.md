@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: single-sourced the package version. `pyproject.toml` now uses
+  hatchling's dynamic version from `__init__.py`'s `__version__`, so the build,
+  the CLI `version` command, and `__version__` can no longer drift. Wheel build
+  verified at 0.1.0. (iteration 26)
 - Bugfix: `DuckDBRunner.load_raw_events` crashed (`TypeError`) when `props` held a
   datetime/Decimal, which happens when a real events file packs a timestamp/decimal
   extra column into props. Now serializes via `json.dumps(default=str)`. Test added.

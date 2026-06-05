@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prd-to-readout"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Turn a PRD into a self-healing, local analytics readout. Hypotheses to daily insights, no cloud warehouse."
 readme = "README.md"
 license = { text = "MIT" }
@@ -46,6 +46,9 @@ Repository = "https://github.com/guo-angeline/prd-to-readout"
 [project.scripts]
 prd-to-readout = "prd_to_readout.cli:app"
 p2r = "prd_to_readout.cli:app"
+
+[tool.hatch.version]
+path = "src/prd_to_readout/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prd_to_readout"]

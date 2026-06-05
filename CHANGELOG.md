@@ -29,6 +29,9 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Changed
 
+- Package version is single-sourced from `__init__.py` via hatchling's dynamic
+  version, so `pyproject.toml`, the CLI `version` command, and `__version__`
+  cannot drift.
 - `FileSource.load` checks file existence before the extension, so a mistyped
   path reports "not found" rather than an unsupported-extension error.
 - `AnalyticsBlueprint` rejects duplicate metric names across primary, adoption,
