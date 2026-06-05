@@ -40,6 +40,10 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: example-freshness guard. `_generate.main()` takes an `out` dir
+  (default unchanged); a new test regenerates into a temp dir and diffs against the
+  committed `examples/sample_run/`, so generated docs can't drift from the code
+  without failing CI. (iteration 36)
 - Hardening: subprocess smoke test for `examples/warehouse_source_demo.py` so the
   README-referenced runnable demo can't rot silently. (iteration 35)
 - Hardening: unit tests for `cli._window_status`, the no-launch-date guard, the

@@ -80,3 +80,5 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 - Unit tests for `cli._window_status` (missing launch date, inclusive window
   boundary, override precedence).
 - Subprocess smoke test for `examples/warehouse_source_demo.py`.
+- Example-freshness test: regenerates into a temp dir and diffs against the
+  committed `examples/sample_run/`, catching drift between code and examples.

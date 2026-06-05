@@ -135,15 +135,15 @@ SECTIONS = ReadoutSections(
 )
 
 
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
+def main(out: Path = OUT) -> None:
+    out.mkdir(parents=True, exist_ok=True)
     bp = AnalyticsBlueprint.model_validate(BLUEPRINT_JSON)
     tracking = TrackingSchema.model_validate(TRACKING_JSON)
 
-    (OUT / "metric_plan.yaml").write_text(bp.to_yaml())
-    (OUT / "METRIC_PLAN.md").write_text(hypothesis_agent.render_blueprint_doc(bp))
-    (OUT / "tracking_schema.json").write_text(json.dumps(TRACKING_JSON, indent=2))
-    snip = OUT / "snippets"
+    (out / "metric_plan.yaml").write_text(bp.to_yaml())
+    (out / "METRIC_PLAN.md").write_text(hypothesis_agent.render_blueprint_doc(bp))
+    (out / "tracking_schema.json").write_text(json.dumps(TRACKING_JSON, indent=2))
+    snip = out / "snippets"
     snip.mkdir(exist_ok=True)
     for fname, content in logging_agent.render_snippets(tracking).items():
         (snip / fname).write_text(content)
@@ -153,7 +153,7 @@ def main() -> None:
     runner.load_raw_events(events)
     sql = pipeline_agent.fallback_sql(bp, tracking)
     runner.execute(sql)
-    models = OUT / "models"
+    models = out / "models"
     models.mkdir(exist_ok=True)
     (models / "metrics_daily.sql").write_text(sql)
 
@@ -173,16 +173,16 @@ def main() -> None:
         date_label="2026-01-15", window_label="2026-01-01 to 2026-01-15",
         stakeholders="PM, Eng, Data Science",
     )
-    (OUT / "READOUT.md").write_text(readout)
+    (out / "READOUT.md").write_text(readout)
 
     # DAILY_PULSE.md: the recurring adoption + health monitor.
     series = health.simulate_health(bp.health_metrics, horizon_days=bp.experiment.horizon_days, seed=42)
     alerts = health.detect_regressions(series, bp.health_metrics)
     pulse = pulse_agent.generate_pulse(bp, results, alerts, chart_text, ctx,
                                        generated_at="2026-01-15T00:00:00+00:00")
-    (OUT / "DAILY_PULSE.md").write_text(pulse)
+    (out / "DAILY_PULSE.md").write_text(pulse)
 
-    print(f"Wrote example artifacts to {OUT}")
+    print(f"Wrote example artifacts to {out}")
     print("\n===== READOUT.md =====\n")
     print(readout)
     print("\n===== DAILY_PULSE.md =====\n")
