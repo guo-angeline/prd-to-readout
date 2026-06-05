@@ -33,8 +33,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] README: document the template-style metric plan (baseline->target,
-      adoption metrics, power analysis, causal fallback).
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
 - [ ] Expose `adoption_effect` (mockgen) as a CLI flag / config field so simulated
       previews can request adoption movement without hand-editing the source dict.
@@ -43,6 +41,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: README gains a "The metric plan" section (baseline->target, adoption
+  metrics, power analysis, causal fallback). The causal/quasi-experimental fallback
+  was previously undocumented. (iteration 14)
 - Hardening: added `CHANGELOG.md` (Keep a Changelog), seeded "Unreleased" from the
   Done log. Operating rule 4 now requires a terse CHANGELOG entry per change.
   (iteration 13)

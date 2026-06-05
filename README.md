@@ -43,6 +43,7 @@ Two things make it trustworthy rather than just slick:
 
 - [Quickstart](#quickstart)
 - [The five stages](#the-five-stages)
+- [The metric plan](#the-metric-plan)
 - [Two outputs: the decision and the monitor](#two-outputs-the-decision-and-the-monitor)
 - [GitHub-native gates](#github-native-gates)
 - [Real data](#real-data)
@@ -123,6 +124,30 @@ recurring step.
 The metric bindings in the tracking spec are the contract: the simulator uses them to fabricate
 data with a known signal, and the SQL agent independently re-derives the metrics from raw events, so
 "the numbers came out right" actually means something.
+
+## The metric plan
+
+Stage 1 produces `METRIC_PLAN.md` (and its machine source `metric_plan.yaml`) on a standard
+product-analytics-plan template. Four parts are worth calling out:
+
+- **Baseline to target ("what good looks like").** Every metric carries a `baseline` (today's
+  control value) and a `target` (the value that counts as a win), rendered as `32.0% -> 36.0%`. Rates
+  show as percentages; means and counts keep their units. With no numbers in the PRD it falls back to
+  a direction ("higher is better").
+- **Adoption & engagement metrics.** A separate list from the primary metric and guardrails. These
+  funnel/depth signals show the feature is being *used* (a take-rate, a depth-of-engagement). They are
+  tracked and reported but **informational**: they do not gate the ship decision.
+- **Power analysis.** From the primary metric's baseline conversion and your MDE, the plan computes
+  the per-arm sample size needed to detect that lift at 80% power. The `metric` command warns when the
+  planned `users_per_arm` is below it, and the readout labels underpowered data `ACCUMULATING` rather
+  than calling a verdict.
+- **Causal fallback.** When a clean user-level A/B test is blocked (network effects, marketplace
+  dynamics, a hard rollout), the plan can specify a quasi-experimental design instead:
+  difference-in-differences, synthetic control, RDD, or PSM, with its treatment/control units and the
+  parallel-trends check. Leave it unset and the default stays a straight A/B test.
+
+Edit `metric_plan.yaml` and re-run `metric` to change any of this; the readable `.md` is regenerated
+from it.
 
 ## Two outputs: the decision and the monitor
 

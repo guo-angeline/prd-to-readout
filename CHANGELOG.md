@@ -28,6 +28,11 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 - `AnalyticsBlueprint` rejects duplicate metric names across primary, adoption,
   and guardrail metrics (a collision silently broke metric bindings and SQL).
 
+### Docs
+
+- README: new "The metric plan" section documenting baseline-to-target framing,
+  adoption metrics, power analysis, and the causal (quasi-experimental) fallback.
+
 ### Tests
 
 - Coverage for `_power_lines` (baseline present/missing, under/over-powered) and
