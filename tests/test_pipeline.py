@@ -27,6 +27,22 @@ def test_self_correction_recovers_after_bad_sql(blueprint, tracking):
     runner.close()
 
 
+def test_self_correction_rejects_wrong_shaped_table(blueprint, tracking):
+    # SQL that EXECUTES but builds a metrics_daily missing required columns must
+    # count as a failed attempt (via _verify) and be retried, not accepted.
+    runner = _runner(blueprint, tracking)
+    good_sql = pipeline_agent.fallback_sql(blueprint, tracking)
+    llm = StubLLM(["CREATE OR REPLACE TABLE metrics_daily AS SELECT 1 AS wrong_col", good_sql])
+
+    sql, attempts = pipeline_agent.build_metrics_model(
+        runner, blueprint, tracking, llm, max_attempts=3
+    )
+    assert attempts == 2  # first ran but was wrong-shaped, second is correct
+    cols = {r[0].lower() for r in runner.query("DESCRIBE metrics_daily")}
+    assert {"metric_name", "arm", "day", "numerator", "denominator", "value"} <= cols
+    runner.close()
+
+
 def test_falls_back_to_deterministic_sql(blueprint, tracking):
     runner = _runner(blueprint, tracking)
     llm = StubLLM(["broken one", "broken two", "broken three"])

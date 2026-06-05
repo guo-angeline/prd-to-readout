@@ -40,6 +40,9 @@ adds a new high-value low-risk item here, then implements it.
 
 (newest first)
 
+- Hardening: test for the `pipeline_agent._verify` recovery branch, SQL that
+  executes but yields a wrong-shaped `metrics_daily` is retried, not accepted.
+  (iteration 30)
 - Hardening: schema now validates SQL-interpolated names (metric/event names,
   value properties) as safe snake_case identifiers, so a malformed or injection-y
   name is rejected at the boundary instead of breaking the generated SQL. Test

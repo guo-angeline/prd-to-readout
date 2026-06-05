@@ -66,3 +66,5 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
   `good_looks_like()` on rate, mean, and count metrics.
 - End-to-end recovery tests for `stats.evaluate_metric` on `count` and `mean`
   metrics (per-user aggregation SQL, incl. the `numeric_mean` value_property).
+- Test for the `pipeline_agent` self-correction `_verify` branch: SQL that runs
+  but produces a wrong-shaped `metrics_daily` is retried rather than accepted.
