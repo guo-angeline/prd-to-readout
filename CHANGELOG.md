@@ -77,3 +77,5 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
   but produces a wrong-shaped `metrics_daily` is retried rather than accepted.
 - Test for the terminal "not yet conclusive" ITERATE branch of `recommend()`,
   completing coverage of all five verdict branches.
+- Unit tests for `cli._window_status` (missing launch date, inclusive window
+  boundary, override precedence).
