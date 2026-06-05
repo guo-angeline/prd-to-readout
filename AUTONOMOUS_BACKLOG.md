@@ -32,8 +32,6 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] `metric` CLI: warn when `experiment.users_per_arm` is below the required
-      sample size for the MDE + baseline (reuse `required_sample_size_rate`).
 - [ ] Optional planted lift on adoption metrics in `mockgen` so simulated
       previews show adoption movement, not a flat line. Keep it seeded + opt-in.
 - [ ] Broaden example health coverage: add an `error_rate` (and/or `anr_rate`)
@@ -47,6 +45,9 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 (newest first)
 
+- Hardening: `metric` CLI warns when the planned `users_per_arm` can't detect the
+  target lift. New shared `power_shortfall()` helper (reuses `required_sample_size_rate`,
+  refactors `_power_lines` to share baseline derivation); 4 unit tests. (iteration 10)
 - Hardening: unit tests for `_power_lines` (no-baseline / underpowered / powered /
   primary-rate fallback / bias-mitigation) and `good_looks_like()` on mean+count
   metrics. Pure test coverage, no behavior change. (iteration 9)

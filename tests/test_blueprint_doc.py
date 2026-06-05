@@ -1,10 +1,41 @@
-from prd_to_readout.agents.hypothesis_agent import _power_lines, render_blueprint_doc
+from prd_to_readout.agents.hypothesis_agent import (
+    _power_lines,
+    power_shortfall,
+    render_blueprint_doc,
+)
 from prd_to_readout.core.schemas import CausalDesign, Metric
 
 
 def _with_experiment(blueprint, **updates):
     exp = blueprint.experiment.model_copy(update=updates)
     return blueprint.model_copy(update={"experiment": exp})
+
+
+def test_power_shortfall_none_without_baseline(blueprint):
+    # Fixture has no baseline to power against, so there's nothing to flag.
+    assert power_shortfall(blueprint) is None
+
+
+def test_power_shortfall_flags_undersized_plan(blueprint):
+    # 400 users/arm cannot detect a 5% lift on a 30% rate.
+    result = power_shortfall(_with_experiment(blueprint, baseline_conversion=0.30))
+    assert result is not None
+    need, planned = result
+    assert planned == 400
+    assert need > planned
+
+
+def test_power_shortfall_none_when_powered(blueprint):
+    bp = _with_experiment(blueprint, baseline_conversion=0.30, users_per_arm=1_000_000)
+    assert power_shortfall(bp) is None
+
+
+def test_power_shortfall_uses_primary_rate_baseline(blueprint):
+    # No explicit baseline_conversion: the rate primary metric's baseline is used.
+    bp = blueprint.model_copy(update={
+        "primary_metric": blueprint.primary_metric.model_copy(update={"baseline": 0.30}),
+    })
+    assert power_shortfall(bp) is not None
 
 
 def test_power_lines_no_baseline_is_just_the_mde(blueprint):

@@ -370,6 +370,19 @@ def _do_metric(cfg: Config, llm, prd_text: str):
     return bp
 
 
+def _warn_underpowered(bp) -> None:
+    """Print a yellow warning if the planned sample can't detect the target lift."""
+    from .agents.hypothesis_agent import power_shortfall
+
+    shortfall = power_shortfall(bp)
+    if shortfall:
+        need, planned = shortfall
+        console.print(
+            f"  [yellow]⚠ underpowered:[/] plan has {planned:,} users/arm but detecting a "
+            f"{bp.experiment.mde:.0%} lift needs ~{need:,}. Raise users_per_arm or the MDE."
+        )
+
+
 def _do_logging(cfg: Config, llm, blueprint):
     from .agents import logging_agent
 
@@ -588,6 +601,7 @@ def metric(
     console.print(f"  primary metric: [cyan]{bp.primary_metric.name}[/]  "
                   f"adoption: {', '.join(m.name for m in bp.adoption_metrics) or 'none'}  "
                   f"guardrails: {', '.join(m.name for m in bp.guardrail_metrics) or 'none'}")
+    _warn_underpowered(bp)
     console.print(f"  review → {cfg.paths.blueprint_doc}   (data: {cfg.paths.blueprint.name})")
     _finish_stage(cfg, state, "metric", [cfg.paths.blueprint_doc, cfg.paths.blueprint], yes=yes)
     _hint(state)

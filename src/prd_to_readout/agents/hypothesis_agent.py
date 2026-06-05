@@ -45,12 +45,32 @@ def _metric_table(metrics, *, good_header: str = "What good looks like") -> list
     return rows
 
 
+def _rate_baseline(bp: AnalyticsBlueprint) -> float | None:
+    """The control rate to power against: the explicit ``baseline_conversion``,
+    else the primary metric's baseline when it is a rate. None if neither exists."""
+    baseline = bp.experiment.baseline_conversion
+    if baseline is None and bp.primary_metric.type == "rate":
+        baseline = bp.primary_metric.baseline
+    return baseline
+
+
+def power_shortfall(bp: AnalyticsBlueprint) -> tuple[int, int] | None:
+    """If the planned per-arm sample can't detect the MDE on the rate baseline,
+    return ``(required, planned)``; else None (including when there's no baseline)."""
+    baseline = _rate_baseline(bp)
+    if baseline is None:
+        return None
+    from ..core.stats import required_sample_size_rate
+
+    need = required_sample_size_rate(baseline, bp.experiment.mde)
+    planned = bp.experiment.users_per_arm
+    return (need, planned) if planned < need else None
+
+
 def _power_lines(bp: AnalyticsBlueprint) -> list[str]:
     """Power-analysis summary: baseline conversion, MDE, required sample size."""
     exp = bp.experiment
-    baseline = exp.baseline_conversion
-    if baseline is None and bp.primary_metric.type == "rate":
-        baseline = bp.primary_metric.baseline
+    baseline = _rate_baseline(bp)
     out = [f"- **Minimum detectable effect:** {exp.mde:.0%} relative lift, 80% power, two-tailed at α=0.05."]
     if baseline is not None:
         out.append(f"- **Baseline conversion:** {baseline * 100:.1f}%.")
