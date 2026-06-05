@@ -1,9 +1,10 @@
 """Seeded two-arm event-stream simulator.
 
 Fabricates a realistic raw event log for a control/treatment experiment, with a
-known lift planted on the primary metric only (guardrails stay flat). Seeded, so
-the demo and tests are reproducible. The SQL agent and the stats layer then have
-to *recover* the planted signal from the raw events.
+known lift planted on the primary metric (and, opt-in, on adoption metrics);
+guardrails stay flat. Seeded, so the demo and tests are reproducible. The SQL
+agent and the stats layer then have to *recover* the planted signal from the raw
+events.
 """
 
 from __future__ import annotations
@@ -55,13 +56,19 @@ def generate_events(
     *,
     seed: int,
     effect: float,
+    adoption_effect: float = 0.0,
 ) -> list[dict[str, Any]]:
-    """Simulate the full raw event stream for both arms."""
+    """Simulate the full raw event stream for both arms.
+
+    ``effect`` is the relative lift planted on the primary metric in the
+    treatment arm. ``adoption_effect`` (default 0.0 = flat) optionally plants a
+    lift on adoption metrics too, so previews show adoption movement. Guardrails
+    always stay flat.
+    """
     rng = np.random.default_rng(seed)
     exp = bp.experiment
     horizon = exp.horizon_days
     n = exp.users_per_arm
-    primary = bp.primary_metric.name
     metrics_by_name = {m.name: m for m in bp.all_metrics()}
     bound_event_names = {b.event_name for b in schema.bindings}
     events: list[dict[str, Any]] = []
@@ -90,7 +97,13 @@ def generate_events(
                 if b.metric_name not in metrics_by_name:
                     continue
                 ev = schema.event(b.event_name)
-                mult = 1.0 + effect if (is_treatment and b.metric_name == primary) else 1.0
+                role = bp.role_of(b.metric_name)
+                if is_treatment and role == "primary":
+                    mult = 1.0 + effect
+                elif is_treatment and role == "adoption":
+                    mult = 1.0 + adoption_effect
+                else:
+                    mult = 1.0
 
                 if b.kind == "unique_user_conversion":
                     p = min(max(b.base_value * mult, 0.0), 1.0)

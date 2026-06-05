@@ -95,18 +95,26 @@ class EventSource(Protocol):
 class SimulatedSource:
     kind = "simulated"
 
-    def __init__(self, blueprint: AnalyticsBlueprint, tracking: TrackingSchema, *, seed: int, effect: float):
+    def __init__(self, blueprint: AnalyticsBlueprint, tracking: TrackingSchema, *,
+                 seed: int, effect: float, adoption_effect: float = 0.0):
         self.blueprint, self.tracking, self.seed, self.effect = blueprint, tracking, seed, effect
+        self.adoption_effect = adoption_effect
 
     def load(self, runner: DuckDBRunner) -> int:
         from ..core import mockgen
 
-        events = mockgen.generate_events(self.blueprint, self.tracking, seed=self.seed, effect=self.effect)
+        events = mockgen.generate_events(
+            self.blueprint, self.tracking, seed=self.seed, effect=self.effect,
+            adoption_effect=self.adoption_effect,
+        )
         runner.load_raw_events(events)
         return len(events)
 
     def descriptor(self) -> dict:
-        return {"kind": self.kind, "seed": self.seed, "effect": self.effect}
+        d = {"kind": self.kind, "seed": self.seed, "effect": self.effect}
+        if self.adoption_effect:  # keep flat-adoption descriptors backward-compatible
+            d["adoption_effect"] = self.adoption_effect
+        return d
 
 
 class FileSource:
@@ -195,6 +203,7 @@ def source_from_config(
             blueprint, tracking,
             seed=int(source.get("seed", default_seed)),
             effect=float(source.get("effect", default_effect)),
+            adoption_effect=float(source.get("adoption_effect", 0.0)),
         )
     if kind == "file":
         return FileSource(source["path"], source.get("mapping"))

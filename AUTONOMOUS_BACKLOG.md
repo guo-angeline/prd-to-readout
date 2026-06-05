@@ -32,19 +32,27 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Optional planted lift on adoption metrics in `mockgen` so simulated
-      previews show adoption movement, not a flat line. Keep it seeded + opt-in.
 - [ ] Broaden example health coverage: add an `error_rate` (and/or `anr_rate`)
       health metric to `examples/_generate.py` and regenerate.
 - [ ] Add a `CHANGELOG.md` and keep a terse entry per autonomous change.
 - [ ] README: document the template-style metric plan (baseline->target,
       adoption metrics, power analysis, causal fallback).
 - [ ] Pass over public functions missing docstrings/type hints; tighten where thin.
+- [ ] Expose `adoption_effect` (mockgen) as a CLI flag / config field so simulated
+      previews can request adoption movement without hand-editing the source dict.
 
 ## Done log
 
 (newest first)
 
+- Hardening: `mockgen.generate_events` gains an opt-in, seeded `adoption_effect`
+  to plant lift on adoption metrics (primary lift + flat guardrails unchanged);
+  default 0.0 preserves the existing stream byte-for-byte. Plumbed through
+  `SimulatedSource`/`source_from_config` (descriptor stays backward-compatible).
+  2 unit tests. (iteration 11)
+
+  Follow-up (not yet done): expose `adoption_effect` as a CLI flag / config field
+  so previews can request it without hand-editing the source dict.
 - Hardening: `metric` CLI warns when the planned `users_per_arm` can't detect the
   target lift. New shared `power_shortfall()` helper (reuses `required_sample_size_rate`,
   refactors `_power_lines` to share baseline derivation); 4 unit tests. (iteration 10)
