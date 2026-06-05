@@ -33,16 +33,18 @@ runnable no-external-services demo + docs. Next product theme is the user's call
 
 ### Hardening (now the active queue until a new theme is chosen)
 
-- [ ] Power-gating only works for rate primaries: `build_run_context` computes
-      `required_n` only when the primary metric is a rate, so a mean/count-primary
-      experiment has `required_n=0` and is treated as always-powered, earning a hard
-      verdict even when underpowered. Add a mean/count sample-size path (needs a
-      baseline std / effect-size assumption) or label such verdicts as not power-gated.
+Backlog is dry: per operating rule 7, the next iteration reads the code/tests/docs,
+adds a new high-value low-risk item here, then implements it.
 
 ## Done log
 
 (newest first)
 
+- Feature: power-gating now covers mean and count primaries, not just rates.
+  `_welch` exposes the control-arm std, new `required_sample_size_mean` sizes the
+  sample, and `build_run_context` computes `required_n` for non-rate primaries so
+  an underpowered mean/count experiment no longer earns a hard verdict. 2 tests.
+  Example (rate primary) unchanged. (iteration 32)
 - Hardening: test for the terminal "not yet conclusive" ITERATE branch of
   `recommend()` (primary not significant). All five verdict branches now covered.
   (iteration 31)

@@ -66,6 +66,11 @@ def build_run_context(
     required = 0
     if primary and primary.metric_type == "rate":
         required = stats.required_sample_size_rate(primary.control_value, bp.experiment.mde, alpha=alpha)
+    elif primary and primary.metric_type in ("mean", "count"):
+        # Power-gate non-rate primaries too, using the observed control-arm spread.
+        required = stats.required_sample_size_mean(
+            primary.control_value, primary.control_std, bp.experiment.mde, alpha=alpha
+        )
     return RunContext(
         source_kind=(state_source or {}).get("kind", "simulated"),
         n_control=n_c,

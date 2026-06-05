@@ -62,6 +62,14 @@ def test_required_sample_size_scales_with_mde():
     assert 0 < big_mde < small_mde  # smaller effect needs more samples
 
 
+def test_required_sample_size_mean_scales_and_guards():
+    big_mde = stats.required_sample_size_mean(50.0, 15.0, 0.20)
+    small_mde = stats.required_sample_size_mean(50.0, 15.0, 0.05)
+    assert 0 < big_mde < small_mde          # smaller effect needs more samples
+    assert stats.required_sample_size_mean(50.0, 0.0, 0.05) == 0   # no spread -> undefined
+    assert stats.required_sample_size_mean(0.0, 15.0, 0.05) == 0   # no baseline -> undefined
+
+
 def test_evaluate_recovers_significant_primary_lift(blueprint, tracking):
     events = mockgen.generate_events(blueprint, tracking, seed=42, effect=0.30)
     runner = DuckDBRunner(":memory:")

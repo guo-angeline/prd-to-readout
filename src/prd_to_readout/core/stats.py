@@ -45,6 +45,9 @@ class StatResult:
     p_adjusted: float | None = None
     rel_ci_low: float = 0.0
     rel_ci_high: float = 0.0
+    # Control-arm standard deviation for mean/count metrics (0.0 for rates), used
+    # to size the required sample for power-gating non-rate primaries.
+    control_std: float = 0.0
 
     @property
     def effective_p(self) -> float:
@@ -109,6 +112,23 @@ def required_sample_size_rate(baseline: float, mde: float, *, alpha: float = ALP
     return int(math.ceil(n))
 
 
+def required_sample_size_mean(baseline_mean: float, std: float, mde: float, *,
+                              alpha: float = ALPHA, power: float = 0.8) -> int:
+    """Per-arm sample size to detect a relative ``mde`` on a mean at given power.
+
+    Two-sample t-test approximation: delta is the absolute effect
+    (``baseline_mean * mde``) and ``std`` is the control-arm standard deviation.
+    Returns 0 when no detectable effect can be defined (zero baseline or std).
+    """
+    delta = abs(baseline_mean * mde)
+    if delta == 0 or std <= 0:
+        return 0
+    z_a = sps.norm.ppf(1 - alpha / 2)
+    z_b = sps.norm.ppf(power)
+    n = (z_a + z_b) ** 2 * 2 * std**2 / delta**2
+    return int(math.ceil(n))
+
+
 def srm_check(n_control: int, n_treatment: int, expected_treatment_frac: float = 0.5,
               alpha: float = 0.001) -> dict:
     """Sample-ratio-mismatch check: are arm sizes consistent with the planned split?
@@ -160,12 +180,14 @@ def _welch(control: np.ndarray, treatment: np.ndarray) -> dict:
     half = 1.96 * se
     rel = diff / m1 if m1 else 0.0
     rel_half = (1.96 * se / m1) if m1 else 0.0
+    control_std = float(control.std(ddof=1)) if len(control) > 1 else 0.0
     return {
         "control_value": m1, "treatment_value": m2, "abs_diff": diff,
         "relative_lift": rel, "p_value": p_value,
         "ci_low": diff - half, "ci_high": diff + half,
         "n_control": len(control), "n_treatment": len(treatment),
         "rel_ci_low": rel - rel_half, "rel_ci_high": rel + rel_half,
+        "control_std": control_std,
     }
 
 

@@ -29,6 +29,10 @@ Each autonomous-loop change adds a terse entry under "Unreleased" (see
 
 ### Changed
 
+- Power-gating now applies to mean and count primaries, not only rates: the
+  readout sizes the required sample from the observed control-arm spread
+  (`required_sample_size_mean`), so an underpowered non-rate experiment is labeled
+  accumulating rather than earning a hard verdict.
 - Schema validates SQL-interpolated names (metric/event names, value properties)
   as safe snake_case identifiers, rejecting malformed or injection-y names at the
   boundary instead of letting them reach the generated SQL.
